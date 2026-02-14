@@ -1,0 +1,18 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome to MyRoomService</h1>
+    @if (User.Identity.IsAuthenticated)
+    {
+        <p>You are logged into your Business Portal.</p>
+        <a class="btn btn-primary" asp-page="/Buildings/Index">Manage My Buildings</a>
+    }
+    else
+    {
+        <p>Please <a asp-area="Identity" asp-page="/Account/Login">Login</a> to manage your rooms.</p>
+    }
+</div>

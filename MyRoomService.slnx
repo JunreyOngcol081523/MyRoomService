@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="MyRoomService.Application/MyRoomService.Application.csproj" />
+  <Project Path="MyRoomService.Domain/MyRoomService.Domain.csproj" />
+  <Project Path="MyRoomService.Infrastructure/MyRoomService.Infrastructure.csproj" />
+  <Project Path="MyRoomService/MyRoomService.csproj" />
+</Solution>
