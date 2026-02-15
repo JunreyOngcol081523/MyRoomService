@@ -13,14 +13,11 @@ namespace MyRoomService.Infrastructure.Persistence
         {
             _tenantId = tenantService.GetTenantId();
         }
-        // Add this inside your ApplicationDbContext class
+
         public DbSet<ApplicationUser> ApplicationUsers { get; set; }
-        // --- Core Tables ---
         public DbSet<Tenant> Tenants { get; set; }
         public DbSet<Building> Buildings { get; set; }
         public DbSet<Unit> Units { get; set; }
-
-        // --- NEW: Management & Billing Tables ---
         public DbSet<Occupant> Occupants { get; set; }
         public DbSet<ChargeDefinition> ChargeDefinitions { get; set; }
         public DbSet<Contract> Contracts { get; set; }
@@ -32,7 +29,7 @@ namespace MyRoomService.Infrastructure.Persistence
         {
             base.OnModelCreating(builder);
 
-            // 1. Configure Decimal Precision (PostgreSQL/SQL Server best practice)
+            // 1. Configure Decimal Precision
             foreach (var property in builder.Model.GetEntityTypes()
                 .SelectMany(t => t.GetProperties())
                 .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
@@ -40,33 +37,46 @@ namespace MyRoomService.Infrastructure.Persistence
                 property.SetColumnType("decimal(10, 2)");
             }
 
-
-
+            // 2. Ensure Postgres UUID types
             builder.Entity<Building>().Property(b => b.TenantId).HasColumnType("uuid");
-
-            // Keep these to ensure Postgres uses the correct UUID format for all tables
             builder.Entity<Unit>().Property(u => u.TenantId).HasColumnType("uuid");
             builder.Entity<Occupant>().Property(o => o.TenantId).HasColumnType("uuid");
             builder.Entity<Contract>().Property(c => c.TenantId).HasColumnType("uuid");
             builder.Entity<Invoice>().Property(i => i.TenantId).HasColumnType("uuid");
-            // 3. Configure Relationships for the New Schema
+
+            // 3. FIX: Specific Relationship Mapping
+
+            // Standard relationships from your ERD
+            builder.Entity<Contract>().Ignore("ContractId");
             builder.Entity<Contract>()
                 .HasOne(c => c.Unit)
-                .WithMany()
+                .WithMany(u => u.Contracts)
                 .HasForeignKey(c => c.UnitId);
 
+            builder.Entity<Contract>()
+                .HasOne(c => c.Occupant)
+                .WithMany(o => o.Contracts)
+                .HasForeignKey(c => c.OccupantId);
+
+            // Link Contract to AddOns (Based on ERD)
             builder.Entity<ContractAddOn>()
                 .HasOne(a => a.Contract)
                 .WithMany(c => c.AddOns)
                 .HasForeignKey(a => a.ContractId);
+            // Link Contract to Invoices (Based on ERD)
+            builder.Entity<Invoice>()
+                .HasOne(i => i.Contract)
+                .WithMany(c => c.Invoices)
+                .HasForeignKey(i => i.ContractId);
 
-            // 4. Map Enum to String for BuildingType (matches schema's VARCHAR)
-            builder.Entity<Building>()
-                .Property(b => b.BuildingType)
-                .HasConversion<string>();
-            builder.Entity<Occupant>()
-                .Property(o => o.KycStatus)
-                .HasConversion<string>();
+            // 4. Enum Conversions
+            builder.Entity<Building>().Property(b => b.BuildingType).HasConversion<string>();
+            builder.Entity<Occupant>().Property(o => o.KycStatus).HasConversion<string>();
+
+            // Ensure Contract Status maps to Integer (matches your screenshot)
+            builder.Entity<Contract>()
+                .Property(c => c.Status)
+                .HasConversion<int>();
         }
     }
 }

@@ -1,0 +1,111 @@
+﻿@page
+@model MyRoomService.Pages.Contracts.IndexModel
+@{
+    ViewData["Title"] = "Contracts";
+}
+
+<div class="container py-4">
+    @* Header Section *@
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h2 class="fw-bold mb-0 text-dark">
+                @(ViewData["FilterName"] != null ? $"Contracts: {ViewData["FilterName"]}" : "Contract Management")
+            </h2>
+            <p class="text-muted mb-0">
+                @(ViewData["FilterName"] != null ? "Showing all historical and active agreements for this occupant." : "Overview of all rental agreements across your properties.")
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (ViewData["FilterName"] != null)
+            {
+                <a asp-page="./Index" asp-route-occupantId="" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-x-circle me-1"></i> Clear Filter
+                </a>
+            }
+            <a asp-page="./Create" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                <i class="bi bi-plus-lg me-2"></i>New Contract
+            </a>
+        </div>
+    </div>
+
+    @* Table Section *@
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-muted small text-uppercase">
+                    <tr>
+                        <th class="ps-4">Occupant</th>
+                        <th>Unit / Building</th>
+                        <th>Status</th>
+                        <th>Period</th>
+                        <th class="text-end">Monthly Rent</th>
+                        <th class="pe-4 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!Model.Contracts.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="bi bi-file-earmark-text fs-1 d-block mb-3 opacity-25"></i>
+                                <p>No contracts found matching your current view.</p>
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var item in Model.Contracts)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="fw-bold text-dark">@item.Occupant?.FullName</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">@item.Occupant?.Email</div>
+                            </td>
+                            <td>
+                                <div class="fw-bold">Unit @item.Unit?.UnitNumber</div>
+                                <div class="small text-muted">@item.Unit?.Building?.Name</div>
+                            </td>
+                            <td>
+                                @{
+                                    var badgeColor = item.Status switch
+                                    {
+                                        Domain.Entities.ContractStatus.Active => "text-success border-success",
+                                        Domain.Entities.ContractStatus.Ended => "text-secondary border-secondary",
+                                        Domain.Entities.ContractStatus.Reserved => "text-info border-info",
+                                        Domain.Entities.ContractStatus.Terminated => "text-danger border-danger",
+                                        _ => "text-dark border-dark"
+                                    };
+                                }
+                                <span class="badge rounded-pill bg-opacity-10 px-3 @badgeColor" style="border: 1px solid currentColor; background-color: transparent;">
+                                    @item.Status
+                                </span>
+                            </td>
+                            <td>
+                                <div class="small fw-medium">@item.StartDate.ToString("MMM dd, yyyy")</div>
+                                <div class="small text-muted">
+                                    <i class="bi bi-arrow-right small"></i>
+                                    @(item.EndDate?.ToString("MMM dd, yyyy") ?? "Open-Ended")
+                                </div>
+                            </td>
+                            <td class="text-end fw-bold text-primary">
+                                @item.RentAmount.ToString("N2")
+                                <div class="small text-muted fw-normal" style="font-size: 0.7rem;">Day @item.BillingDay</div>
+                            </td>
+                            <td class="pe-4 text-center">
+                                <div class="dropdown">
+                                    <button class="btn btn-light btn-sm rounded-circle border shadow-sm" type="button" data-bs-toggle="dropdown">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
+                                        <li><a class="dropdown-item" asp-page="./Details" asp-route-id="@item.Id"><i class="bi bi-eye me-2"></i>Details</a></li>
+                                        <li><a class="dropdown-item" asp-page="./Edit" asp-route-id="@item.Id"><i class="bi bi-pencil me-2"></i>Edit</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger fw-bold" href="#"><i class="bi bi-slash-circle me-2"></i>Terminate</a></li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

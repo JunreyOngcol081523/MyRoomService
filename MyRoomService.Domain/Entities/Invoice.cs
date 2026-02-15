@@ -11,6 +11,7 @@ namespace MyRoomService.Domain.Entities
         public Guid OccupantId { get; set; }
         public Occupant? Occupant { get; set; }
 
+        // This MUST match the column in your ERD
         public Guid ContractId { get; set; }
         public Contract? Contract { get; set; }
 

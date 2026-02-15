@@ -25,6 +25,7 @@ namespace MyRoomService.Domain.Entities
         public decimal DefaultRate { get; set; } // Renamed from MonthlyRate
 
         public UnitStatus Status { get; set; } = UnitStatus.Available;
+        public ICollection<Contract> Contracts { get; set; } = new List<Contract>();
     }
     public enum UnitStatus
     {
