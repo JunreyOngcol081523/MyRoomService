@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
 
-namespace MyRoomService.Pages.Buildings
+namespace MyRoomService.Pages.Occupants
 {
     public class IndexModel : PageModel
     {
@@ -15,25 +16,23 @@ namespace MyRoomService.Pages.Buildings
             _tenantService = tenantService;
         }
 
-        public IList<Building> Building { get; set; } = default!;
-
+        public List<Occupant> Occupants { get; set; } = new();
 
         public async Task OnGetAsync()
         {
             ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
-        {
-            ("Buildings", "/Buildings")
-        };
-            var debugId = _tenantService.GetTenantId();
-            Building = await _context.Buildings
+    {
+        ("Occupants", "/Occupants")
+    };
+            // Filter by the current Landlady's TenantId
+            var tenantId = _tenantService.GetTenantId();
+            Occupants = await _context.Occupants
 
                     .IgnoreQueryFilters()
 
-                    .Where(b => b.TenantId == debugId && !b.IsArchived)
+                    .Where(b => b.TenantId == tenantId)
 
                     .ToListAsync();
-
         }
-
     }
 }

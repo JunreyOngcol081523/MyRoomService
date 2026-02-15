@@ -24,6 +24,13 @@ namespace MyRoomService.Domain.Entities
         [Column(TypeName = "decimal(10, 2)")]
         public decimal DefaultRate { get; set; } // Renamed from MonthlyRate
 
-        public string Status { get; set; } = "AVAILABLE";
+        public UnitStatus Status { get; set; } = UnitStatus.Available;
+    }
+    public enum UnitStatus
+    {
+        Available = 0,
+        Occupied = 1,
+        Maintenance = 2,
+        Reserved = 3
     }
 }

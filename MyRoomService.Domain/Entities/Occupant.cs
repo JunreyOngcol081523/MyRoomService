@@ -1,5 +1,4 @@
 ﻿using MyRoomService.Domain.Interfaces;
-using System.Diagnostics.Contracts;
 
 namespace MyRoomService.Domain.Entities
 {
@@ -12,10 +11,18 @@ namespace MyRoomService.Domain.Entities
         public string LastName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Phone { get; set; } = string.Empty;
-
-        public string KycStatus { get; set; } = "PENDING";
+        // Helps in dropdowns and lists
+        public string FullName => $"{FirstName} {LastName}";
+        public KycStatus KycStatus { get; set; } = KycStatus.Pending;
 
         // Navigation: One occupant can have multiple contracts over time
         public ICollection<Contract> Contracts { get; set; } = new List<Contract>();
+    }
+    public enum KycStatus
+    {
+        Pending = 0,
+        Verified = 1,
+        Rejected = 2,
+        Expired = 3
     }
 }

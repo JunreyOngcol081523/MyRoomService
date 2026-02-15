@@ -41,6 +41,12 @@ namespace MyRoomService.Pages.Buildings
             }
 
             Building = building;
+            ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
+            {
+                ("Buildings", "/Buildings"),
+                (Building.Name, $"/Buildings/ManageBuilding?id={id}"),
+                ("Edit Details", $"/Buildings/Edit?id={id}")
+            };
             return Page();
         }
         public async Task<IActionResult> OnPostAsync()

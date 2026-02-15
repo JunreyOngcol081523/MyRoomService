@@ -1,0 +1,170 @@
+﻿@page
+@using MyRoomService.Domain.Entities
+@model MyRoomService.Pages.Occupants.IndexModel
+@{
+    ViewData["Title"] = "Occupant Directory";
+}
+
+<div class="container-fluid py-4 px-lg-5">
+    @* --- Header Section --- *@
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Occupant Directory</h2>
+            <p class="text-muted mb-0">Total Registered: <span class="badge bg-secondary rounded-pill">@Model.Occupants.Count</span></p>
+        </div>
+        <a asp-page="./Create" class="btn btn-primary rounded-pill px-4 shadow-sm">
+            <i class="bi bi-person-plus-fill me-2"></i>Register New Occupant
+        </a>
+    </div>
+
+    @* --- Stats & Filter Bar --- *@
+    <div class="row g-3 mb-4">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control border-start-0 ps-0" id="occupantSearch" placeholder="Find by name, phone, or email...">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body d-flex align-items-center justify-content-around py-2">
+                    <div class="text-center">
+                        <div class="small text-muted fw-semibold">Verified</div>
+                        @* Now comparing against the Enum value *@
+                        <div class="h5 mb-0 text-success fw-bold">
+                            @Model.Occupants.Count(o => o.KycStatus == KycStatus.Verified)
+                        </div>
+                    </div>
+                    <div class="vr opacity-25"></div>
+                    <div class="text-center">
+                        <div class="small text-muted fw-semibold">Pending</div>
+                        @* Now comparing against the Enum value *@
+                        <div class="h5 mb-0 text-warning fw-bold">
+                            @Model.Occupants.Count(o => o.KycStatus == KycStatus.Pending)
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* --- Table Section --- *@
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light border-bottom">
+                    <tr>
+                        <th class="ps-4 py-3 text-uppercase small fw-bold text-muted">Occupant Details</th>
+                        <th class="py-3 text-uppercase small fw-bold text-muted">Contact Info</th>
+                        <th class="py-3 text-uppercase small fw-bold text-muted text-center">KYC Status</th>
+                        <th class="py-3 text-uppercase small fw-bold text-muted text-center">Contracts</th>
+                        <th class="pe-4 py-3 text-uppercase small fw-bold text-muted text-end">Management</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    @if (!Model.Occupants.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <div class="py-4">
+                                    <i class="bi bi-people text-muted opacity-25" style="font-size: 3rem;"></i>
+                                    <p class="mt-2 text-muted">No occupants registered yet.</p>
+                                    <a asp-page="./Create" class="btn btn-sm btn-link">Add your first tenant</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var occupant in Model.Occupants)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-circle me-3">
+                                        @occupant.FirstName[0]@occupant.LastName[0]
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-dark">@occupant.FullName</div>
+                                        <small class="text-muted text-uppercase" style="font-size: 0.7rem;">ID: @occupant.Id.ToString().Substring(0, 8)</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column">
+                                    <span class="small"><i class="bi bi-envelope me-2 text-muted"></i>@occupant.Email</span>
+                                    <span class="small"><i class="bi bi-telephone me-2 text-muted"></i>@occupant.Phone</span>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                @if (occupant.KycStatus == KycStatus.Verified)
+                                {
+                                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Verified
+                                    </span>
+                                }
+                                else if (occupant.KycStatus == KycStatus.Pending)
+                                {
+                                    <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3">
+                                        <i class="bi bi-hourglass-split me-1"></i> Pending
+                                    </span>
+                                }
+                                @* Add more cases if needed *@
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-light text-dark border rounded-pill">0 Units</span>
+                            </td>
+                            <td class="pe-4 text-end">
+                                <div class="btn-group shadow-sm rounded-pill overflow-hidden">
+                                    <a asp-page="./Details" asp-route-id="@occupant.Id" class="btn btn-white btn-sm px-3 border-end" title="View Profile">
+                                        <i class="bi bi-eye text-primary"></i>
+                                    </a>
+                                    <a asp-page="./Edit" asp-route-id="@occupant.Id" class="btn btn-white btn-sm px-3 border-end" title="Edit Info">
+                                        <i class="bi bi-pencil text-secondary"></i>
+                                    </a>
+                                    <button class="btn btn-white btn-sm px-3" title="Archive/Delete">
+                                        <i class="bi bi-trash text-danger"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        background-color: #e9ecef;
+        color: #495057;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.85rem;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .btn-white {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+    }
+
+        .btn-white:hover {
+            background-color: #f8f9fa;
+        }
+
+    .table-hover tbody tr:hover {
+        background-color: rgba(0,0,0,0.01);
+    }
+</style>

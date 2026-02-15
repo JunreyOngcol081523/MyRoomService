@@ -1,0 +1,74 @@
+﻿@page "{buildingId:guid}"
+@model MyRoomService.Pages.Units.CreateModel
+@{
+    ViewData["Title"] = "Add Unit";
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h4 class="mb-0">Add New Unit to <span class="text-primary">@Model.BuildingName</span></h4>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        <input type="hidden" asp-for="BuildingId" />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="Unit.UnitNumber" class="form-label">Unit Number / Name</label>
+                                <input asp-for="Unit.UnitNumber" class="form-control" placeholder="e.g. Room 101" />
+                                <span asp-validation-for="Unit.UnitNumber" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Unit.FloorLevel" class="form-label">Floor Level</label>
+                                <input asp-for="Unit.FloorLevel" class="form-control" type="number" />
+                                <span asp-validation-for="Unit.FloorLevel" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Unit.RentalMode" class="form-label">Rental Mode</label>
+                                <select asp-for="Unit.RentalMode" class="form-select">
+                                    <option value="ENTIRE_UNIT">Entire Unit (Apartment)</option>
+                                    <option value="PER_BED">Per Bed (Dormitory)</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Unit.MaxOccupancy" class="form-label">Max Occupancy</label>
+                                <input asp-for="Unit.MaxOccupancy" class="form-control" type="number" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Unit.DefaultRate" class="form-label">Default Rate (Monthly)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input asp-for="Unit.DefaultRate" class="form-control" type="number" step="0.01" />
+                                </div>
+                                <span asp-validation-for="Unit.DefaultRate" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="Unit.Status" class="form-label fw-semibold small">Initial Status</label>
+                                <select asp-for="Unit.Status"
+                                        asp-items="Html.GetEnumSelectList<MyRoomService.Domain.Entities.UnitStatus>()"
+                                        class="form-select rounded-3">
+                                </select>
+                                <span asp-validation-for="Unit.Status" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                            <a asp-page="/Buildings/ManageBuilding" asp-route-id="@Model.BuildingId" class="btn btn-light px-4">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-4">Create Unit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

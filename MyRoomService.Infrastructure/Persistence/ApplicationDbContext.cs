@@ -64,6 +64,9 @@ namespace MyRoomService.Infrastructure.Persistence
             builder.Entity<Building>()
                 .Property(b => b.BuildingType)
                 .HasConversion<string>();
+            builder.Entity<Occupant>()
+                .Property(o => o.KycStatus)
+                .HasConversion<string>();
         }
     }
 }
