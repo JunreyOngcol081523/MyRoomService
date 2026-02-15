@@ -1,39 +1,81 @@
 ﻿@page
 @model MyRoomService.Pages.Buildings.CreateModel
+@{
+    ViewData["Title"] = "Add New Building";
+}
 
-        @{
-        ViewData["Title"] = "Create";
-        }
-        
-        <h1>Create</h1>
-        
-    <h4>Building</h4>
-    <hr />
-    <div class="row">
-    <div class="col-md-4">
-    <form method="post">
-    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-            <div class="form-group">
-                <label asp-for="Building.Name" class="control-label"></label>
-                <input asp-for="Building.Name" class="form-control" />
-                <span asp-validation-for="Building.Name" class="text-danger"></span>
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a asp-page="./Index" class="text-decoration-none">Buildings</a></li>
+            <li class="breadcrumb-item active" aria-current="page">New Property</li>
+        </ol>
+    </nav>
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-6">
+            <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="card-header bg-primary py-3">
+                    <h5 class="card-title text-white mb-0 fw-bold">
+                        <i class="bi bi-building-add me-2"></i> Register New Property
+                    </h5>
+                </div>
+
+                <div class="card-body p-4 p-md-5">
+                    <form method="post">
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger border-0 rounded-3 mb-4 shadow-sm" role="alert"></div>
+
+                        <div class="mb-4">
+                            <label asp-for="Building.Name" class="form-label fw-semibold text-secondary">Property Name</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-tag text-muted"></i></span>
+                                <input asp-for="Building.Name" class="form-control bg-light border-start-0" placeholder="e.g. Sunset Heights Apartments" />
+                            </div>
+                            <span asp-validation-for="Building.Name" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="Building.Address" class="form-label fw-semibold text-secondary">Complete Address</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt text-muted"></i></span>
+                                <input asp-for="Building.Address" class="form-control bg-light border-start-0" placeholder="Street, City, Postal Code" />
+                            </div>
+                            <span asp-validation-for="Building.Address" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-5">
+                            <label asp-for="Building.BuildingType" class="form-label fw-semibold text-secondary">Building Classification</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i class="bi bi-grid-3x3-gap text-muted"></i></span>
+                                <select asp-for="Building.BuildingType" class="form-select bg-light border-start-0">
+                                    <option value="">-- Select Type --</option>
+                                    @* Note: If BuildingType is an Enum, we'll populate this in the code-behind *@
+                                    @foreach (var val in Enum.GetValues(typeof(MyRoomService.Domain.Entities.ResidentialType)))
+                                    {
+                                        <option value="@val">@val</option>
+                                    }
+                                </select>
+                            </div>
+                            <span asp-validation-for="Building.BuildingType" class="text-danger small"></span>
+                        </div>
+
+                        <hr class="my-4 text-muted">
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a asp-page="./Index" class="btn btn-light px-4 rounded-pill border">Cancel</a>
+                            <button type="submit" class="btn btn-primary px-5 rounded-pill shadow">
+                                <i class="bi bi-check-circle me-2"></i>Create Building
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="form-group">
-                <label asp-for="Building.Address" class="control-label"></label>
-                <input asp-for="Building.Address" class="form-control" />
-                <span asp-validation-for="Building.Address" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <input type="submit" value="Create" class="btn btn-primary" />
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 
-<div>
-    <a asp-page="Index">Back to List</a>
-</div>
-
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

@@ -4,8 +4,9 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MyRoomService.Domain.Entities;
+
 // IMPORTANT: Add these using statements to find your classes
-using MyRoomService.Infrastructure.Persistence;
+
 using System.ComponentModel.DataAnnotations;
 
 namespace MyRoomService.Areas.Identity.Pages.Account
@@ -18,7 +19,7 @@ namespace MyRoomService.Areas.Identity.Pages.Account
         private readonly IUserEmailStore<ApplicationUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
-        private readonly ApplicationDbContext _context; // We need this to save the Tenant
+        private readonly Infrastructure.Persistence.ApplicationDbContext _context; // We need this to save the Tenant
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
@@ -26,7 +27,7 @@ namespace MyRoomService.Areas.Identity.Pages.Account
             SignInManager<ApplicationUser> signInManager,
             ILogger<RegisterModel> logger,
             IEmailSender emailSender,
-            ApplicationDbContext context) // Added context here
+            Infrastructure.Persistence.ApplicationDbContext context) // Added context here
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -86,11 +87,13 @@ namespace MyRoomService.Areas.Identity.Pages.Account
                     // 1. Create the Tenant
                     var newTenant = new Tenant
                     {
+                        Id = Guid.NewGuid(),
                         Name = Input.OrganizationName,
-                        SubscriptionPlan = "Free"
+                        SubscriptionStatus = "ACTIVE"
                     };
 
-                    _context.Tenants.Add(newTenant);
+                    //_context.Tenants.Add(newTenant);
+                    _context.Add(newTenant);
                     await _context.SaveChangesAsync();
 
                     // 2. Create the User object

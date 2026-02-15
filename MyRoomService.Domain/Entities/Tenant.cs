@@ -2,11 +2,14 @@
 {
     public class Tenant
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; } // Changed to Guid
         public string Name { get; set; } = string.Empty;
-        public string SubscriptionPlan { get; set; } = "Free"; // e.g., Free, Basic, Premium
 
-        // This links the Tenant to the Buildings
+        // Matches 'subscription_status' in schema
+        public string SubscriptionStatus { get; set; } = "ACTIVE";
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
         public ICollection<Building> Buildings { get; set; } = new List<Building>();
     }
 }

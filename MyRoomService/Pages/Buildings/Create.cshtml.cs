@@ -1,20 +1,16 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
-using MyRoomService.Infrastructure.Persistence;
+
 namespace MyRoomService.Pages.Buildings
 {
     public class CreateModel : PageModel
     {
-        private readonly ApplicationDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly MyRoomService.Infrastructure.Persistence.ApplicationDbContext _context;
         private readonly ITenantService _tenantService;
-        public CreateModel(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ITenantService tenantService)
+        public CreateModel(MyRoomService.Infrastructure.Persistence.ApplicationDbContext context, ITenantService tenantService)
         {
             _context = context;
-            _userManager = userManager;
             _tenantService = tenantService;
         }
 
@@ -26,29 +22,16 @@ namespace MyRoomService.Pages.Buildings
         [BindProperty]
         public Building Building { get; set; } = default!;
 
-        // For more information, see https://aka.ms/RazorPagesCRUD.
         public async Task<IActionResult> OnPostAsync()
         {
-            // 1. Get the ID from the Cookie Service (Fast!)
+            if (!ModelState.IsValid) return Page();
+
+            // 1. Grab the ID from the logged-in user's cookie/claims
             var currentTenantId = _tenantService.GetTenantId();
 
-            // 2. Critical Check: If the cookie doesn't have an ID, they aren't a valid tenant
-            if (currentTenantId <= 0)
-            {
-                ModelState.AddModelError(string.Empty, "Invalid Tenant Session. Please log in again.");
-                return Page();
-            }
-
-            // 3. Assign the Stamp
+            // 2. Stamp it onto the building
             Building.TenantId = currentTenantId;
-
-            // 4. Remove validation for the hidden field
-            ModelState.Remove("Building.TenantId");
-
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
+            Building.CreatedAt = DateTime.UtcNow;
 
             _context.Buildings.Add(Building);
             await _context.SaveChangesAsync();

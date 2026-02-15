@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
@@ -22,16 +23,10 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 // 3. Setup Identity to use ApplicationUser (CLEAN & MERGED)
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
-    options.SignIn.RequireConfirmedAccount = false; // Easier for development
-    options.Password.RequireDigit = false;
-    options.Password.RequiredLength = 6;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequireUppercase = false;
+    options.SignIn.RequireConfirmedAccount = false;
 })
-    .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddClaimsPrincipalFactory<AdditionalUserClaimsPrincipalFactory>(); // <--- IMPORTANT: This stays!
-
-
+.AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, AdditionalUserClaimsPrincipalFactory>();
 builder.Services.AddRazorPages();
 
 var app = builder.Build();

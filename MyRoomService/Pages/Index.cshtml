@@ -1,18 +1,83 @@
 ﻿@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome to MyRoomService</h1>
+<div class="container py-5">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="fw-bold text-dark">Welcome to MyRoomService</h1>
+            <p class="text-muted">Your complete property management command center.</p>
+            <hr />
+        </div>
+    </div>
+
     @if (User.Identity.IsAuthenticated)
     {
-        <p>You are logged into your Business Portal.</p>
-        <a class="btn btn-primary" asp-page="/Buildings/Index">Manage My Buildings</a>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0 rounded-4 transition-hover">
+                    <div class="card-body p-4">
+                        <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-3 d-inline-block mb-3">
+                            <i class="bi bi-building fs-3"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Portfolio</h5>
+                        <p class="card-text text-muted">View and manage your registered buildings and property details.</p>
+                        <a asp-page="/Buildings/Index" class="btn btn-outline-primary stretched-link">Manage Buildings</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0 rounded-4 opacity-75">
+                    <div class="card-body p-4">
+                        <div class="bg-success bg-opacity-10 text-success rounded-3 p-3 d-inline-block mb-3">
+                            <i class="bi bi-door-open fs-3"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Units & Rooms</h5>
+                        <p class="card-text text-muted">Track occupancy, maintenance, and unit-specific details.</p>
+                        <button class="btn btn-outline-success disabled">Coming Soon</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm border-0 rounded-4 opacity-75">
+                    <div class="card-body p-4">
+                        <div class="bg-warning bg-opacity-10 text-warning rounded-3 p-3 d-inline-block mb-3">
+                            <i class="bi bi-cash-stack fs-3"></i>
+                        </div>
+                        <h5 class="card-title fw-bold">Billing & Invoices</h5>
+                        <p class="card-text text-muted">Monitor rent collection and generate monthly tenant invoices.</p>
+                        <button class="btn btn-outline-warning disabled">Coming Soon</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     }
     else
     {
-        <p>Please <a asp-area="Identity" asp-page="/Account/Login">Login</a> to manage your rooms.</p>
+        <div class="p-5 mb-4 bg-light rounded-5 shadow-sm text-center">
+            <div class="container-fluid py-5">
+                <h2 class="display-5 fw-bold">Simplified Landlord Management</h2>
+                <p class="col-md-8 fs-4 mx-auto text-muted">
+                    Sign in to access your business portal and start managing your properties with ease.
+                </p>
+                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4">
+                    <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary btn-lg px-5 rounded-pill shadow">Login Now</a>
+                    <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-outline-secondary btn-lg px-5 rounded-pill">Create Account</a>
+                </div>
+            </div>
+        </div>
     }
 </div>
+
+<style>
+    /* Add a subtle hover effect to cards */
+    .transition-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.1) !important;
+        transition: all 0.3s ease;
+    }
+</style>

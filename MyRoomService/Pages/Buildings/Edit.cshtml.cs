@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using MyRoomService.Domain.Entities;
+using MyRoomService.Domain.Interfaces;
 using MyRoomService.Infrastructure.Persistence;
 
 namespace MyRoomService.Pages.Buildings
@@ -9,54 +9,53 @@ namespace MyRoomService.Pages.Buildings
     public class EditModel : PageModel
     {
         private readonly ApplicationDbContext _context;
+        private readonly ITenantService _tenantService; // Re-introducing this
 
-        public EditModel(ApplicationDbContext context)
+        public EditModel(ApplicationDbContext context, ITenantService tenantService)
         {
             _context = context;
+            _tenantService = tenantService;
         }
 
         [BindProperty]
         public Building Building { get; set; } = default!;
 
-        public async Task<IActionResult> OnGetAsync(int? id)
+        public async Task<IActionResult> OnGetAsync(Guid? id)
         {
-            if (id == null)
+            if (id == null) return NotFound();
+
+            // We use IgnoreQueryFilters to bypass the automatic "WHERE TenantId = ..."
+            // Then we manually check it to see what's going on.
+            var building = await _context.Buildings
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (building == null) return Content("Database says this ID does not exist at all.");
+
+            var userTenantId = _tenantService.GetTenantId();
+
+            // This is the moment of truth:
+            if (building.TenantId != userTenantId)
             {
-                return NotFound();
+                return Content($"Mismatch Detected! DB has '{building.TenantId}', but User has '{userTenantId}'.");
             }
 
-            var building = await _context.Buildings.FirstOrDefaultAsync(m => m.Id == id);
-            if (building == null)
-            {
-                return NotFound();
-            }
             Building = building;
             return Page();
         }
-
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more information, see https://aka.ms/RazorPagesCRUD.
         public async Task<IActionResult> OnPostAsync()
         {
-            // 1. We remove TenantId from validation because it won't be in the form
-            ModelState.Remove("Building.TenantId");
+            if (!ModelState.IsValid) return Page();
 
-            if (!ModelState.IsValid)
+            // The hidden TenantId from the form ensures we stay in the right lane.
+            // However, as an extra security check, we re-verify it here.
+            var currentTenantId = _tenantService.GetTenantId();
+            if (Building.TenantId != currentTenantId)
             {
-                return Page();
+                return Forbid(); // Someone tried to change the TenantId in the hidden field!
             }
 
-            // 2. Fetch the 'Version from the Database' to make sure we don't lose the TenantId
-            var buildingToUpdate = await _context.Buildings.FirstOrDefaultAsync(m => m.Id == Building.Id);
-
-            if (buildingToUpdate == null)
-            {
-                return NotFound();
-            }
-
-            // 3. Only update the fields the user is allowed to change
-            buildingToUpdate.Name = Building.Name;
-            buildingToUpdate.Address = Building.Address;
+            _context.Attach(Building).State = EntityState.Modified;
 
             try
             {
@@ -64,19 +63,11 @@ namespace MyRoomService.Pages.Buildings
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!BuildingExists(Building.Id))
-                {
-                    return NotFound();
-                }
-                else { throw; }
+                if (!_context.Buildings.Any(e => e.Id == Building.Id)) return NotFound();
+                else throw;
             }
 
             return RedirectToPage("./Index");
-        }
-
-        private bool BuildingExists(int id)
-        {
-            return _context.Buildings.Any(e => e.Id == id);
         }
     }
 }

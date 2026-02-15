@@ -2,6 +2,6 @@
 {
     public interface ITenantService
     {
-        int GetTenantId();
+        Guid GetTenantId();
     }
 }

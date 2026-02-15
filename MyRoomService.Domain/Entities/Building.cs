@@ -1,14 +1,19 @@
-﻿namespace MyRoomService.Domain.Entities
-{
-    public class Building
-    {
-        public int Id { get; set; } // The unique ID for the building
-        public string Name { get; set; } // e.g., "Sunset Apartments"
-        public string Address { get; set; } // Physical location
+﻿using MyRoomService.Domain.Entities;
+using MyRoomService.Domain.Interfaces;
 
-        // Multi-Tenancy: This links the building to a specific owner
-        public int TenantId { get; set; }
-        // The "Navigation" property
-        public Tenant? Tenant { get; set; } = default!;
-    }
+public class Building : IMustHaveTenant
+{
+    public Guid Id { get; set; }
+    public Guid TenantId { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+    public string? Address { get; set; }
+
+    // This can stay an Enum in C#; EF Core will save it as a string to match the schema
+    public ResidentialType BuildingType { get; set; }
+
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    public ICollection<Unit> Units { get; set; } = new List<Unit>();
+    public bool IsArchived { get; set; } = false;
 }

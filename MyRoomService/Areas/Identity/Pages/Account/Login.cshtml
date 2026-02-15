@@ -1,0 +1,105 @@
+﻿@page
+@model LoginModel
+
+@{
+    ViewData["Title"] = "Welcome Back";
+}
+
+<style>
+    /* Custom brand colors to make it look less like a default template */
+    :root {
+        --brand-primary: #0d6efd; /* Adjust this to your preferred brand color */
+    }
+    .card-login {
+        border: none;
+        border-radius: 1rem;
+        transition: all 0.3s ease;
+    }
+    .btn-brand {
+        background-color: var(--brand-primary);
+        border-color: var(--brand-primary);
+        padding: 0.8rem;
+        font-weight: 600;
+        color: white;
+    }
+    .btn-brand:hover {
+        filter: brightness(90%);
+        color: white;
+    }
+</style>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-8">
+            <div class="card shadow-lg card-login">
+
+                <div class="card-header bg-primary text-white text-center py-4 rounded-top">
+                    <h3 class="fw-light my-1">@ViewData["Title"]</h3>
+                    <p class="mb-0 small opacity-75">MyRoomService Landlord Portal</p>
+                </div>
+
+                <div class="card-body p-4 p-md-5">
+                    <form id="account" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                            <label asp-for="Input.Email">Email Address</label>
+                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                            <label asp-for="Input.Password">Password</label>
+                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" asp-for="Input.RememberMe" />
+                                <label class="form-check-label small" asp-for="Input.RememberMe">
+                                    @Html.DisplayNameFor(m => m.Input.RememberMe)
+                                </label>
+                            </div>
+                            <a id="forgot-password" asp-page="./ForgotPassword" class="small text-decoration-none">Forgot Password?</a>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button id="login-submit" type="submit" class="btn btn-brand btn-lg rounded-pill shadow-sm">Log In</button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-4">
+                        <p class="text-muted small">
+                            Don't have an account yet? <br />
+                            <a asp-page="./Register" asp-route-returnUrl="@Model.ReturnUrl" class="fw-bold text-decoration-none">Start Managing Your Properties</a>
+                        </p>
+                    </div>
+                </div>
+
+                @if ((Model.ExternalLogins?.Count ?? 0) > 0)
+                {
+                    <div class="card-footer bg-light p-4 text-center border-0">
+                        <p class="small text-muted mb-3">Or sign in with</p>
+                        <form id="external-account" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+                            <div class="d-flex justify-content-center gap-2">
+                                @foreach (var provider in Model.ExternalLogins!)
+                                {
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm" name="provider" value="@provider.Name">@provider.DisplayName</button>
+                                }
+                            </div>
+                        </form>
+                    </div>
+                }
+            </div>
+
+            <div class="text-center mt-3">
+                <a id="resend-confirmation" asp-page="./ResendEmailConfirmation" class="text-muted small text-decoration-none">Resend email confirmation</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

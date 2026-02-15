@@ -1,51 +1,63 @@
 ﻿@page
 @model MyRoomService.Pages.Buildings.IndexModel
 
-@{
-    ViewData["Title"] = "Index";
-}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0">Property Portfolio</h2>
+            <p class="text-muted">Manage your registered buildings and locations.</p>
+        </div>
+        <a asp-page="Create" class="btn btn-primary rounded-pill px-4">
+            <i class="bi bi-plus-lg me-2"></i>Add New Building
+        </a>
+    </div>
 
-<h1>Index</h1>
-<div class="alert alert-info">
-    <strong>Debug Info:</strong>
-    Your Browser's Tenant ID: @(User.FindFirst("TenantId")?.Value ?? "NOT FOUND")
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Building Name</th>
+                        <th>Address</th>
+                        <th>Type</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Building)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-2 me-3">
+                                        <i class="bi bi-building"></i>
+                                    </div>
+                                    <span class="fw-semibold">@item.Name</span>
+                                </div>
+                            </td>
+                            <td>@item.Address</td>
+                            <td>
+                                <span class="badge rounded-pill bg-info text-dark fw-normal">@item.BuildingType</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group shadow-sm rounded">
+                                    <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-sm btn-white border">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+
+                                    <a asp-page="/Buildings/ManageBuilding" asp-route-id="@item.Id" class="btn btn-sm btn-white border" title="Manage Building">
+                                        <i class="bi bi-building-gear"></i>
+                                    </a>
+
+                                    <a asp-page="./Archive" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary border">
+                                        <i class="bi bi-archive"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
-<p>
-    <a asp-page="Create">Create New</a>
-</p>
-<table class="table">
-    <thead>
-        <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Building[0].Name)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Building[0].Address)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Building[0].TenantId)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-@foreach (var item in Model.Building) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Address)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.TenantId)
-            </td>
-            <td>
-                <a asp-page="./Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-page="./Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-page="./Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
-    </tbody>
-</table>
