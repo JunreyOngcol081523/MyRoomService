@@ -294,9 +294,6 @@ namespace MyRoomService.Infrastructure.Migrations
                     b.Property<int>("BillingDay")
                         .HasColumnType("integer");
 
-                    b.Property<Guid?>("ContractId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp with time zone");
 
@@ -319,8 +316,6 @@ namespace MyRoomService.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ContractId");
 
                     b.HasIndex("OccupantId");
 
@@ -592,10 +587,6 @@ namespace MyRoomService.Infrastructure.Migrations
 
             modelBuilder.Entity("MyRoomService.Domain.Entities.Contract", b =>
                 {
-                    b.HasOne("MyRoomService.Domain.Entities.Contract", null)
-                        .WithMany("Contracts")
-                        .HasForeignKey("ContractId");
-
                     b.HasOne("MyRoomService.Domain.Entities.Occupant", "Occupant")
                         .WithMany("Contracts")
                         .HasForeignKey("OccupantId")
@@ -603,7 +594,7 @@ namespace MyRoomService.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("MyRoomService.Domain.Entities.Unit", "Unit")
-                        .WithMany()
+                        .WithMany("Contracts")
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -635,7 +626,7 @@ namespace MyRoomService.Infrastructure.Migrations
             modelBuilder.Entity("MyRoomService.Domain.Entities.Invoice", b =>
                 {
                     b.HasOne("MyRoomService.Domain.Entities.Contract", "Contract")
-                        .WithMany()
+                        .WithMany("Invoices")
                         .HasForeignKey("ContractId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -682,7 +673,7 @@ namespace MyRoomService.Infrastructure.Migrations
                 {
                     b.Navigation("AddOns");
 
-                    b.Navigation("Contracts");
+                    b.Navigation("Invoices");
                 });
 
             modelBuilder.Entity("MyRoomService.Domain.Entities.Invoice", b =>
@@ -698,6 +689,11 @@ namespace MyRoomService.Infrastructure.Migrations
             modelBuilder.Entity("MyRoomService.Domain.Entities.Tenant", b =>
                 {
                     b.Navigation("Buildings");
+                });
+
+            modelBuilder.Entity("MyRoomService.Domain.Entities.Unit", b =>
+                {
+                    b.Navigation("Contracts");
                 });
 #pragma warning restore 612, 618
         }

@@ -15,8 +15,10 @@ namespace MyRoomService.Pages.Contracts
             _tenantService = tenantService;
         }
         public IList<Domain.Entities.Contract> Contracts { get; set; } = default!;
+        public Guid? CurrentOccupantId { get; set; }
         public async Task OnGetAsync(Guid? occupantId)
         {
+            CurrentOccupantId = occupantId;
             var activeTenantId = _tenantService.GetTenantId();
 
             // 1. Build the base query

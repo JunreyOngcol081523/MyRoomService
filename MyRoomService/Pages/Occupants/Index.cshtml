@@ -119,17 +119,30 @@
                                 @{
                                     // Count active or all contracts based on your preference
                                     int contractCount = occupant.Contracts?.Count ?? 0;
-
-                                    // Change color based on whether they have a room or not
-                                    string badgeClass = contractCount > 0 ? "bg-primary" : "bg-light text-muted border";
                                 }
 
-                                <a asp-page="/Contracts/Index"
-                                   asp-route-occupantId="@occupant.Id"
-                                   class="badge @badgeClass rounded-pill px-3 py-2 text-decoration-none shadow-sm hover-elevate">
-                                    <i class="bi bi-file-earmark-text me-1"></i>
-                                    @contractCount @(contractCount == 1 ? "Contract" : "Contracts")
-                                </a>
+                                @if (occupant.KycStatus == KycStatus.Verified)
+                                {
+                                    // Clickable Link for Verified Occupants
+                                    string badgeClass = contractCount > 0 ? "bg-primary" : "bg-light text-muted border";
+
+                                    <a asp-page="/Contracts/Index"
+                                       asp-route-occupantId="@occupant.Id"
+                                       class="badge @badgeClass rounded-pill px-3 py-2 text-decoration-none shadow-sm hover-elevate">
+                                        <i class="bi bi-file-earmark-text me-1"></i>
+                                        @contractCount @(contractCount == 1 ? "Contract" : "Contracts")
+                                    </a>
+                                }
+                                else
+                                {
+                                    // Non-Clickable Badge for Pending/Unverified Occupants
+                                    <span class="badge bg-light text-muted border rounded-pill px-3 py-2 shadow-sm opacity-75"
+                                          title="Verify occupant to manage contracts"
+                                          style="cursor: not-allowed;">
+                                        <i class="bi bi-file-lock2 me-1"></i>
+                                        @contractCount @(contractCount == 1 ? "Contract" : "Contracts")
+                                    </span>
+                                }
                             </td>
                             <td class="pe-4 text-end">
                                 <div class="btn-group shadow-sm rounded-pill overflow-hidden">

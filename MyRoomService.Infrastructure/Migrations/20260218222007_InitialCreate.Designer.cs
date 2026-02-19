@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyRoomService.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260215001335_AddTenantIdToChildren")]
-    partial class AddTenantIdToChildren
+    [Migration("20260218222007_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -40,6 +40,9 @@ namespace MyRoomService.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -306,9 +309,8 @@ namespace MyRoomService.Infrastructure.Migrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
@@ -500,9 +502,8 @@ namespace MyRoomService.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
@@ -596,7 +597,7 @@ namespace MyRoomService.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("MyRoomService.Domain.Entities.Unit", "Unit")
-                        .WithMany()
+                        .WithMany("Contracts")
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -628,7 +629,7 @@ namespace MyRoomService.Infrastructure.Migrations
             modelBuilder.Entity("MyRoomService.Domain.Entities.Invoice", b =>
                 {
                     b.HasOne("MyRoomService.Domain.Entities.Contract", "Contract")
-                        .WithMany()
+                        .WithMany("Invoices")
                         .HasForeignKey("ContractId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -674,6 +675,8 @@ namespace MyRoomService.Infrastructure.Migrations
             modelBuilder.Entity("MyRoomService.Domain.Entities.Contract", b =>
                 {
                     b.Navigation("AddOns");
+
+                    b.Navigation("Invoices");
                 });
 
             modelBuilder.Entity("MyRoomService.Domain.Entities.Invoice", b =>
@@ -689,6 +692,11 @@ namespace MyRoomService.Infrastructure.Migrations
             modelBuilder.Entity("MyRoomService.Domain.Entities.Tenant", b =>
                 {
                     b.Navigation("Buildings");
+                });
+
+            modelBuilder.Entity("MyRoomService.Domain.Entities.Unit", b =>
+                {
+                    b.Navigation("Contracts");
                 });
 #pragma warning restore 612, 618
         }

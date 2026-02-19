@@ -1,0 +1,143 @@
+﻿@page "{occupantId:Guid}"
+@model MyRoomService.Pages.Contracts.CreateModel
+@{
+    ViewData["Title"] = "Create Contract";
+}
+
+<div class="container-fluid py-4 px-lg-5">
+    @* --- Header --- *@
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h2 class="fw-bold mb-0 text-dark">New Contract</h2>
+            <p class="text-muted mb-0">Creating agreement for <span class="fw-bold text-primary">@Model.OccupantName</span></p>
+        </div>
+        <a asp-page="/Occupants/Index" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
+            <i class="bi bi-x-lg me-2"></i>Cancel
+        </a>
+    </div>
+
+    <form method="post">
+        @* HIDDEN FIELD: Essential to pass the ID back to the server *@
+        <input type="hidden" asp-for="Contract.OccupantId" />
+
+        <div class="row g-4">
+
+            @* --- Left Column: Property Details --- *@
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4 p-xl-5">
+                        <h5 class="fw-bold mb-4 text-primary">
+                            <i class="bi bi-geo-alt-fill me-2"></i>Property Details
+                        </h5>
+
+                        @* READ-ONLY OCCUPANT FIELD *@
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-muted small text-uppercase">Occupant Name</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-light border-0"><i class="bi bi-person-check-fill text-muted"></i></span>
+                                <input type="text" class="form-control bg-light border-0 fw-bold text-dark" value="@Model.OccupantName" readonly />
+                            </div>
+                        </div>
+
+                        <hr class="my-4 border-secondary border-opacity-10" />
+
+                        @* BUILDING COMBOBOX *@
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold text-muted small text-uppercase">Building</label>
+                            <select id="BuildingSelect" class="form-select form-select-lg rounded-3 bg-white border shadow-sm" asp-items="Model.BuildingsList">
+                                <option value="">-- Select Building --</option>
+                            </select>
+                        </div>
+
+                        @* UNIT COMBOBOX (Dependent) *@
+                        <div class="mb-2">
+                            <label asp-for="Contract.UnitId" class="form-label fw-semibold text-muted small text-uppercase">Unit</label>
+                            <select asp-for="Contract.UnitId" id="UnitSelect" class="form-select form-select-lg rounded-3 bg-light border-0" disabled>
+                                <option value="">-- Select Unit --</option>
+                                @* Options will be loaded via JavaScript based on Building selection *@
+                            </select>
+                            <div class="form-text small mt-2 text-muted">
+                                <i class="bi bi-info-circle me-1"></i>Select a building above to see available units.
+                            </div>
+                            <span asp-validation-for="Contract.UnitId" class="text-danger small"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* --- Right Column: Terms & Financials --- *@
+            <div class="col-lg-6">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4 p-xl-5">
+                        <h5 class="fw-bold mb-4 text-success">
+                            <i class="bi bi-cash-coin me-2"></i>Terms & Rent
+                        </h5>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label asp-for="Contract.StartDate" class="form-label fw-semibold text-muted small text-uppercase">Start Date</label>
+                                <input asp-for="Contract.StartDate" type="date" class="form-control form-control-lg rounded-3 bg-light border-0" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Contract.EndDate" class="form-label fw-semibold text-muted small text-uppercase">End Date (Optional)</label>
+                                <input asp-for="Contract.EndDate" type="date" class="form-control form-control-lg rounded-3 bg-light border-0" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label asp-for="Contract.RentAmount" class="form-label fw-semibold text-muted small text-uppercase">Base Monthly Rent</label>
+                                <div class="input-group input-group-lg shadow-none">
+                                    <span class="input-group-text bg-light border-0 text-muted">₱</span>
+                                    <input asp-for="Contract.RentAmount" type="number" step="0.01" class="form-control bg-light border-0 fw-bold" placeholder="0.00" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="Contract.BillingDay" class="form-label fw-semibold text-muted small text-uppercase">Billing Day</label>
+                                <input asp-for="Contract.BillingDay" type="number" min="1" max="31" class="form-control form-control-lg rounded-3 bg-light border-0" />
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label asp-for="Contract.Status" class="form-label fw-semibold text-muted small text-uppercase">Initial Status</label>
+                            <select asp-for="Contract.Status" class="form-select form-select-lg rounded-3 bg-light border-0" asp-items="Html.GetEnumSelectList<MyRoomService.Domain.Entities.ContractStatus>()">
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* --- Bottom: Add-Ons (UI Placeholder) --- *@
+            <div class="col-12">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-4 p-xl-5">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="fw-bold mb-0 text-info">
+                                <i class="bi bi-plus-square-dotted me-2"></i>Recurring Add-ons
+                            </h5>
+                            <span class="badge bg-light text-muted border">Optional</span>
+                        </div>
+
+                        @* Placeholder for Add-on checkboxes *@
+                        <div class="alert alert-light border-start border-4 border-info shadow-sm" role="alert">
+                            <i class="bi bi-info-circle-fill text-info me-2"></i>
+                            logic for loading dynamic add-ons will be implemented next.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 text-end mt-2">
+                <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 shadow-sm fw-bold">
+                    <i class="bi bi-file-earmark-check me-2"></i> Finalize Contract
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

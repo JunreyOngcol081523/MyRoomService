@@ -19,6 +19,10 @@ namespace MyRoomService.Pages.Buildings
 
         public async Task<IActionResult> OnGetAsync(Guid id)
         {
+            ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
+                {
+                    ("Buildings", "/Buildings")
+                };
             // We use IgnoreQueryFilters so we can find the building even if it's already archived
             var building = await _context.Buildings
                 .IgnoreQueryFilters()

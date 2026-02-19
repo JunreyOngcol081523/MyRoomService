@@ -11,63 +11,165 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">RentFlow</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-page="/Privacy">Privacy</a>
-                        </li>
-                    </ul>
-                    <partial name="_LoginPartial" />
-                </div>
-            </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            <nav aria-label="breadcrumb" class="mb-4">
-                <ol class="breadcrumb bg-transparent p-0">
-                    <li class="breadcrumb-item">
-                        <a asp-page="/Index" class="text-decoration-none">Dashboard</a>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <div class="d-flex vh-100 overflow-hidden">
+            <aside class="bg-dark text-white d-flex flex-column flex-shrink-0 p-3" style="width: 260px;">
+                <a asp-area="" asp-page="/Index" class="d-flex align-items-center mb-4 text-white text-decoration-none">
+                    <i class="bi bi-buildings fs-3 me-2 text-primary"></i>
+                    <span class="fs-4 fw-bold">RentFlow</span>
+                </a>
+
+                <hr class="text-white-50 mt-0">
+
+                <ul class="nav nav-pills flex-column mb-auto" id="sidebarMenu">
+                    <li class="nav-item mb-1">
+                        <a asp-page="/Index" class="nav-link text-white" aria-current="page">
+                            <i class="bi bi-grid me-2"></i> Dashboard
+                        </a>
                     </li>
 
-                    @if (ViewData["Breadcrumbs"] is List<(string Title, string Url)> breadcrumbs)
-                    {
-                        foreach (var crumb in breadcrumbs)
-                        {
-                            if (crumb == breadcrumbs.Last())
-                            {
-                                <li class="breadcrumb-item active" aria-current="page">@crumb.Title</li>
-                            }
-                            else
-                            {
-                                <li class="breadcrumb-item">
-                                    <a href="@crumb.Url" class="text-decoration-none">@crumb.Title</a>
-                                </li>
-                            }
-                        }
-                    }
-                </ol>
-            </nav>
-            @RenderBody()
-        </main>
-    </div>
+                    <li class="nav-item mb-1">
+                        <a href="#buildingsSubmenu" data-bs-toggle="collapse" class="nav-link text-white d-flex justify-content-between align-items-center" aria-expanded="false">
+                            <div>
+                                <i class="bi bi-building me-2"></i> Buildings
+                            </div>
+                            <i class="bi bi-chevron-down ms-auto" style="font-size: 0.8rem;"></i>
+                        </a>
+                        <ul class="collapse nav flex-column ms-3 mt-1" id="buildingsSubmenu" data-bs-parent="#sidebarMenu">
+                            <li class="nav-item">
+                                <a asp-page="/Buildings/Index" asp-route-status="Active" class="nav-link text-white-50 py-1 mb-1">
+                                    <i class="bi bi-building-check me-2"></i> Active Buildings
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a asp-page="/Buildings/Index" asp-route-status="Archived" class="nav-link text-white-50 py-1 mb-1">
+                                    <i class="bi bi-archive me-2"></i> Archived Buildings
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - RentFlow - <a asp-area="" asp-page="/Privacy">Privacy</a>
+                    <li class="nav-item mb-1">
+                        <a asp-page="/Occupants/Index" class="nav-link text-white">
+                            <i class="bi bi-people me-2"></i> Manage Occupants
+                        </a>
+                    </li>
+                    <li class="nav-item mb-1">
+                        <a asp-page="/Billing/Index" class="nav-link text-white">
+                            <i class="bi bi-receipt me-2"></i> Bills and Payments
+                        </a>
+                    </li>
+                    <li class="nav-item mb-1">
+                        <a asp-page="/Settings/Index" class="nav-link text-white">
+                            <i class="bi bi-gear me-2"></i> Settings
+                        </a>
+                    </li>
+                    <li class="nav-item mb-1">
+                        <a asp-page="/Contact" class="nav-link text-white">
+                            <i class="bi bi-envelope me-2"></i> Contact Us
+                        </a>
+                    </li>
+                    <li class="nav-item mb-1">
+                        <a asp-page="/About" class="nav-link text-white">
+                            <i class="bi bi-info-circle me-2"></i> About
+                        </a>
+                    </li>
+                </ul>
+
+                <hr class="text-white-50">
+
+                <div class="mt-2">
+                    <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })" method="post" class="w-100">
+                        <button type="submit" class="nav-link text-white bg-transparent border-0 w-100 text-start d-flex align-items-center rounded hover-bg-danger">
+                            <i class="bi bi-box-arrow-right fs-5 me-2 text-danger"></i>
+                            <span>Logout</span>
+                        </button>
+                    </form>
+                </div>
+            </aside>
+            <div class="d-flex flex-column flex-grow-1 overflow-auto bg-light">
+
+                <header class="bg-white border-bottom py-3 px-4 shadow-sm sticky-top">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-semibold text-dark">@ViewData["Title"]</h5>
+
+                        <div>
+                            <partial name="_LoginPartial" />
+                        </div>
+                    </div>
+                </header>
+
+                <main role="main" class="flex-grow-1 p-4">
+                    <nav aria-label="breadcrumb" class="mb-4">
+                        <ol class="breadcrumb bg-transparent p-0 mb-0">
+                            <li class="breadcrumb-item">
+                                <a asp-page="/Index" class="text-decoration-none">Dashboard</a>
+                            </li>
+
+                            @if (ViewData["Breadcrumbs"] is List<(string Title, string Url)> breadcrumbs)
+                            {
+                                foreach (var crumb in breadcrumbs)
+                                {
+                                    if (crumb == breadcrumbs.Last())
+                                    {
+                                        <li class="breadcrumb-item active" aria-current="page">@crumb.Title</li>
+                                    }
+                                    else
+                                    {
+                                        <li class="breadcrumb-item">
+                                            <a href="@crumb.Url" class="text-decoration-none">@crumb.Title</a>
+                                        </li>
+                                    }
+                                }
+                            }
+                        </ol>
+                    </nav>
+
+                    <div class="bg-white p-4 rounded shadow-sm border">
+                        @RenderBody()
+                    </div>
+                </main>
+
+                <footer class="bg-white border-top py-3 text-muted text-center mt-auto">
+                    <div class="container-fluid small">
+                        &copy; 2026 - RentFlow - <a asp-area="" asp-page="/Privacy">Privacy Policy</a>
+                    </div>
+                </footer>
+            </div>
         </div>
-    </footer>
+    }
+    else
+    {
+        <div class="d-flex flex-column min-vh-100 bg-light">
+
+            <header class="bg-white border-bottom py-3 shadow-sm">
+                <div class="container d-flex justify-content-between align-items-center">
+                    <a asp-area="" asp-page="/Index" class="text-decoration-none d-flex align-items-center">
+                        <i class="bi bi-buildings fs-3 me-2 text-primary"></i>
+                        <span class="fs-4 fw-bold text-dark">RentFlow</span>
+                    </a>
+                    <div>
+                        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-outline-primary me-2">Login</a>
+                        <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary">Sign Up</a>
+                    </div>
+                </div>
+            </header>
+
+            <main role="main" class="flex-grow-1 d-flex align-items-center justify-content-center py-5">
+                <div class="container">
+                    @RenderBody()
+                </div>
+            </main>
+
+            <footer class="bg-white border-top py-4 text-muted text-center mt-auto">
+                <div class="container small">
+                    &copy; 2026 - RentFlow. <a asp-area="" asp-page="/Privacy" class="text-decoration-none">Privacy Policy</a> |
+                    <a asp-area="" asp-page="/Contact" class="text-decoration-none">Contact Us</a>
+                </div>
+            </footer>
+        </div>
+    }
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>

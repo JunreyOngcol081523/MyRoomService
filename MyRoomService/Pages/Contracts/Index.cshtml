@@ -4,108 +4,188 @@
     ViewData["Title"] = "Contracts";
 }
 
-<div class="container py-4">
-    @* Header Section *@
-    <div class="d-flex justify-content-between align-items-end mb-4">
+<div class="container-fluid py-4 px-lg-5">
+    @* --- Header Section --- *@
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3">
         <div>
             <h2 class="fw-bold mb-0 text-dark">
                 @(ViewData["FilterName"] != null ? $"Contracts: {ViewData["FilterName"]}" : "Contract Management")
             </h2>
             <p class="text-muted mb-0">
-                @(ViewData["FilterName"] != null ? "Showing all historical and active agreements for this occupant." : "Overview of all rental agreements across your properties.")
+                @(ViewData["FilterName"] != null
+                                ? "Showing all historical and active agreements for this occupant." 
+                                        : "Overview of all rental agreements across your properties.")
             </p>
         </div>
         <div class="d-flex gap-2">
             @if (ViewData["FilterName"] != null)
             {
-                <a asp-page="./Index" asp-route-occupantId="" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm">
-                    <i class="bi bi-x-circle me-1"></i> Clear Filter
+                <a asp-page="/Occupants/Index" class="btn btn-outline-secondary rounded-pill px-3 shadow-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Occupants
                 </a>
             }
-            <a asp-page="./Create" class="btn btn-primary rounded-pill px-4 shadow-sm">
+            <a asp-page="./Create" asp-route-occupantId="@Model.CurrentOccupantId" class="btn btn-primary rounded-pill px-4 shadow-sm">
                 <i class="bi bi-plus-lg me-2"></i>New Contract
             </a>
         </div>
     </div>
 
-    @* Table Section *@
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light text-muted small text-uppercase">
-                    <tr>
-                        <th class="ps-4">Occupant</th>
-                        <th>Unit / Building</th>
-                        <th>Status</th>
-                        <th>Period</th>
-                        <th class="text-end">Monthly Rent</th>
-                        <th class="pe-4 text-center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @if (!Model.Contracts.Any())
-                    {
-                        <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
-                                <i class="bi bi-file-earmark-text fs-1 d-block mb-3 opacity-25"></i>
-                                <p>No contracts found matching your current view.</p>
-                            </td>
-                        </tr>
-                    }
-                    @foreach (var item in Model.Contracts)
-                    {
-                        <tr>
-                            <td class="ps-4">
-                                <div class="fw-bold text-dark">@item.Occupant?.FullName</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">@item.Occupant?.Email</div>
-                            </td>
-                            <td>
-                                <div class="fw-bold">Unit @item.Unit?.UnitNumber</div>
-                                <div class="small text-muted">@item.Unit?.Building?.Name</div>
-                            </td>
-                            <td>
-                                @{
-                                    var badgeColor = item.Status switch
-                                    {
-                                        Domain.Entities.ContractStatus.Active => "text-success border-success",
-                                        Domain.Entities.ContractStatus.Ended => "text-secondary border-secondary",
-                                        Domain.Entities.ContractStatus.Reserved => "text-info border-info",
-                                        Domain.Entities.ContractStatus.Terminated => "text-danger border-danger",
-                                        _ => "text-dark border-dark"
-                                    };
-                                }
-                                <span class="badge rounded-pill bg-opacity-10 px-3 @badgeColor" style="border: 1px solid currentColor; background-color: transparent;">
-                                    @item.Status
-                                </span>
-                            </td>
-                            <td>
-                                <div class="small fw-medium">@item.StartDate.ToString("MMM dd, yyyy")</div>
-                                <div class="small text-muted">
-                                    <i class="bi bi-arrow-right small"></i>
-                                    @(item.EndDate?.ToString("MMM dd, yyyy") ?? "Open-Ended")
-                                </div>
-                            </td>
-                            <td class="text-end fw-bold text-primary">
-                                @item.RentAmount.ToString("N2")
-                                <div class="small text-muted fw-normal" style="font-size: 0.7rem;">Day @item.BillingDay</div>
-                            </td>
-                            <td class="pe-4 text-center">
-                                <div class="dropdown">
-                                    <button class="btn btn-light btn-sm rounded-circle border shadow-sm" type="button" data-bs-toggle="dropdown">
-                                        <i class="bi bi-three-dots"></i>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
-                                        <li><a class="dropdown-item" asp-page="./Details" asp-route-id="@item.Id"><i class="bi bi-eye me-2"></i>Details</a></li>
-                                        <li><a class="dropdown-item" asp-page="./Edit" asp-route-id="@item.Id"><i class="bi bi-pencil me-2"></i>Edit</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item text-danger fw-bold" href="#"><i class="bi bi-slash-circle me-2"></i>Terminate</a></li>
-                                    </ul>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+    @* --- Cards Section --- *@
+    @if (!Model.Contracts.Any())
+    {
+        <div class="text-center py-5 bg-white rounded-4 shadow-sm">
+            <i class="bi bi-file-earmark-text text-muted opacity-25" style="font-size: 4rem;"></i>
+            <h5 class="mt-3">No contracts found</h5>
+            <p class="text-muted mb-4">You don't have any contracts matching your current view.</p>
+            <a asp-page="./Create" asp-route-occupantId="@Model.CurrentOccupantId" class="btn btn-outline-primary rounded-pill px-4">Create First Contract</a>
         </div>
-    </div>
+    }
+    else
+    {
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+            @foreach (var item in Model.Contracts)
+            {
+                // Setup Status Colors
+                var statusConfig = item.Status switch
+                {
+                    Domain.Entities.ContractStatus.Active => new { Color = "success", Icon = "check-circle-fill", Label = "Active" },
+                    Domain.Entities.ContractStatus.Ended => new { Color = "secondary", Icon = "clock-history", Label = "Ended" },
+                    Domain.Entities.ContractStatus.Reserved => new { Color = "info", Icon = "bookmark-star-fill", Label = "Reserved" },
+                    Domain.Entities.ContractStatus.Terminated => new { Color = "danger", Icon = "slash-circle-fill", Label = "Terminated" },
+                    _ => new { Color = "dark", Icon = "file-earmark", Label = item.Status.ToString() }
+                };
+
+                <div class="col">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 hover-shadow transition overflow-hidden">
+
+                        @* Card Top Ribbon (Color based on status) *@
+                        <div class="bg-@statusConfig.Color opacity-75" style="height: 4px;"></div>
+
+                        <div class="card-body p-4">
+                            @* Top Row: Unit Info & Status Badge *@
+                            <div class="d-flex justify-content-between align-items-start mb-4">
+                                <div>
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <i class="bi bi-door-open text-primary fs-5"></i>
+                                        <h5 class="fw-bold mb-0">Unit @(item.Unit?.UnitNumber ?? "N/A")</h5>
+                                    </div>
+                                    <small class="text-muted fw-medium"><i class="bi bi-building me-1"></i>@(item.Unit?.Building?.Name ?? "Unknown Building")</small>
+                                </div>
+                                <span class="badge bg-@statusConfig.Color bg-opacity-10 text-@statusConfig.Color rounded-pill px-3 py-2 border border-@statusConfig.Color border-opacity-25">
+                                    <i class="bi bi-@statusConfig.Icon me-1"></i> @statusConfig.Label
+                                </span>
+                            </div>
+
+                            @* Occupant & Rent Info *@
+                            <div class="bg-light rounded-3 p-3 mb-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary border-opacity-10">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="avatar-circle-sm bg-white text-primary shadow-sm">
+                                            @if (!string.IsNullOrEmpty(item.Occupant?.FirstName) && !string.IsNullOrEmpty(item.Occupant?.LastName))
+                                            {
+                                                @(item.Occupant.FirstName[0].ToString() + item.Occupant.LastName[0].ToString())
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-person"></i>
+                                            }
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark mb-0" style="font-size: 0.95rem;">@(item.Occupant?.FullName ?? "Unknown")</div>
+                                            <div class="text-muted" style="font-size: 0.75rem;">@(item.Occupant?.Phone ?? item.Occupant?.Email ?? "No contact info")</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-end">
+                                    <div>
+                                        <div class="small text-muted mb-1">Monthly Rent</div>
+                                        <div class="fs-5 fw-bold text-dark">₱@item.RentAmount.ToString("N2")</div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="small text-muted mb-1">Billing Day</div>
+                                        <div class="badge bg-white text-dark border shadow-sm px-2 py-1">Day @item.BillingDay</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @* Timeline/Period *@
+                            <div class="d-flex justify-content-between align-items-center px-2">
+                                <div>
+                                    <div class="small text-muted fw-semibold mb-1">Start Date</div>
+                                    <div class="small fw-bold">@item.StartDate.ToString("MMM dd, yyyy")</div>
+                                </div>
+                                <div class="text-muted opacity-50">
+                                    <i class="bi bi-arrow-right-circle fs-5"></i>
+                                </div>
+                                <div class="text-end">
+                                    <div class="small text-muted fw-semibold mb-1">End Date</div>
+                                    <div class="small fw-bold @(item.EndDate == null ? "text-primary" : "")">
+                                        @(item.EndDate?.ToString("MMM dd, yyyy") ?? "Open-Ended")
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @* Card Footer Actions *@
+                        <div class="card-footer bg-white border-top border-opacity-10 p-3">
+                            <div class="d-flex justify-content-between align-items-center gap-2">
+
+                                @* Left side: Navigation Actions *@
+                                <div class="btn-group shadow-sm rounded-pill overflow-hidden">
+                                    <a asp-page="./Details" asp-route-id="@item.Id" class="btn btn-light btn-sm px-3 border-end text-primary" title="View Details">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a asp-page="./Edit" asp-route-id="@item.Id" class="btn btn-light btn-sm px-3 text-secondary" title="Edit Contract">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                </div>
+
+                                @* Right side: Quick Status Changes based on current status *@
+                                @if (item.Status == Domain.Entities.ContractStatus.Reserved)
+                                {
+                                    <form method="post" asp-page-handler="ChangeStatus" asp-route-id="@item.Id" asp-route-newStatus="Active" class="m-0">
+                                        <button type="submit" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm" onclick="return confirm('Activate this contract?');">
+                                            <i class="bi bi-play-circle me-1"></i> Activate
+                                        </button>
+                                    </form>
+                                }
+                                else if (item.Status == Domain.Entities.ContractStatus.Active)
+                                {
+                                    <form method="post" asp-page-handler="ChangeStatus" asp-route-id="@item.Id" asp-route-newStatus="Terminated" class="m-0">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="return confirm('Are you sure you want to terminate this active contract?');">
+                                            <i class="bi bi-slash-circle me-1"></i> Terminate
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
 </div>
+
+<style>
+    .hover-shadow:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.1) !important;
+    }
+
+    .transition {
+        transition: all 0.3s ease;
+    }
+
+    .avatar-circle-sm {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.8rem;
+        border: 1px solid #e9ecef;
+    }
+</style>

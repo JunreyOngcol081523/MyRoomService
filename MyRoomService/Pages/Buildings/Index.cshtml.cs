@@ -16,23 +16,44 @@ namespace MyRoomService.Pages.Buildings
         }
 
         public IList<Building> Building { get; set; } = default!;
+        public string CurrentStatus { get; set; } = "Active";
+
+        public async Task OnGetAsync(string status = "Active")
+        {
 
 
-        public async Task OnGetAsync()
-        {
-            ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
-        {
-            ("Buildings", "/Buildings")
-        };
+            CurrentStatus = status;
             var debugId = _tenantService.GetTenantId();
-            Building = await _context.Buildings
 
+            if (_context.Buildings != null)
+            {
+                // 1. Build the base query (Notice we don't use 'await' or 'ToListAsync' yet)
+                var baseQuery = _context.Buildings
+                    .Include(b => b.Units)
                     .IgnoreQueryFilters()
+                    .Where(b => b.TenantId == debugId);
 
-                    .Where(b => b.TenantId == debugId && !b.IsArchived)
+                // 2. Add the specific Active/Archived filter based on the parameter
+                if (status == "Archived")
+                {
+                    ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
+                {
+                    ("Buildings", "/Archived Buildings")
+                };
+                    baseQuery = baseQuery.Where(b => b.IsArchived == true);
+                }
+                else
+                {
+                    ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
+                {
+                    ("Buildings", "/Buildings")
+                };
+                    baseQuery = baseQuery.Where(b => b.IsArchived == false); // Default to Active
+                }
 
-                    .ToListAsync();
-
+                // 3. Execute the query ONCE at the very end
+                Building = await baseQuery.ToListAsync();
+            }
         }
 
     }
