@@ -18,20 +18,35 @@ namespace MyRoomService.Pages.Occupants
 
         public List<Occupant> Occupants { get; set; } = new();
 
+        //    public async Task OnGetAsync()
+        //    {
+        //        ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
+        //{
+        //    ("Occupants", "/Occupants")
+        //};
+        //        // Filter by the current Landlady's TenantId
+        //        var tenantId = _tenantService.GetTenantId();
+        //        Occupants = await _context.Occupants
+
+        //                .IgnoreQueryFilters()
+
+        //                .Where(b => b.TenantId == tenantId)
+
+        //                .ToListAsync();
+        //    }
         public async Task OnGetAsync()
         {
             ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
-    {
-        ("Occupants", "/Occupants")
-    };
+            {
+                ("Occupants", "/Occupants")
+            };
+
             // Filter by the current Landlady's TenantId
             var tenantId = _tenantService.GetTenantId();
             Occupants = await _context.Occupants
-
+                    .Include(o => o.Contracts) // <--- THIS IS THE MAGIC LINE
                     .IgnoreQueryFilters()
-
                     .Where(b => b.TenantId == tenantId)
-
                     .ToListAsync();
         }
     }

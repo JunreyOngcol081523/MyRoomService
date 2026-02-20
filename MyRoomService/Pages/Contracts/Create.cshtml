@@ -107,21 +107,40 @@
                 </div>
             </div>
 
-            @* --- Bottom: Add-Ons (UI Placeholder) --- *@
+            @* --- Bottom: Add-Ons Summary Table --- *@
             <div class="col-12">
                 <div class="card border-0 shadow-sm rounded-4">
                     <div class="card-body p-4 p-xl-5">
                         <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h5 class="fw-bold mb-0 text-info">
-                                <i class="bi bi-plus-square-dotted me-2"></i>Recurring Add-ons
-                            </h5>
-                            <span class="badge bg-light text-muted border">Optional</span>
+                            <div>
+                                <h5 class="fw-bold mb-0 text-info">
+                                    <i class="bi bi-plus-square-dotted me-2"></i>Recurring Add-ons
+                                </h5>
+                                <p class="text-muted small mb-0 mt-1">Optional recurring charges billed with rent.</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-info rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addonModal">
+                                <i class="bi bi-plus-lg me-1"></i> Add Charge
+                            </button>
                         </div>
 
-                        @* Placeholder for Add-on checkboxes *@
-                        <div class="alert alert-light border-start border-4 border-info shadow-sm" role="alert">
-                            <i class="bi bi-info-circle-fill text-info me-2"></i>
-                            logic for loading dynamic add-ons will be implemented next.
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="addonsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Charge Name</th>
+                                        <th>Type</th>
+                                        <th class="text-end">Agreed Amount (₱)</th>
+                                        <th class="text-center" style="width: 80px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr id="emptyStateRow">
+                                        <td colspan="4" class="text-center py-4 text-muted">
+                                            No add-ons selected. Click "Add Charge" to include items like Parking or Wi-Fi.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -136,8 +155,168 @@
     </form>
 </div>
 
+@* --- ADD-ON MODAL --- *@
+<div class="modal fade" id="addonModal" tabindex="-1" aria-labelledby="addonModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark" id="addonModalLabel">Add Recurring Charge</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted small text-uppercase">Select Charge</label>
+                    <select id="modalChargeSelect" class="form-select form-select-lg bg-light border-0 rounded-3">
+                        <option value="">-- Choose an Add-on --</option>
+                    </select>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-semibold text-muted small text-uppercase">Charge Type</label>
+                        <input type="text" id="modalChargeType" class="form-control bg-white text-muted" readonly placeholder="-" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-semibold text-muted small text-uppercase">Default (₱)</label>
+                        <input type="text" id="modalDefaultAmount" class="form-control bg-white text-muted" readonly placeholder="0.00" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-primary small text-uppercase">Agreed Amount (₱)</label>
+                    <input type="number" id="modalAgreedAmount" step="0.01" class="form-control form-control-lg border-primary shadow-sm rounded-3 fw-bold" placeholder="0.00" />
+                    <div class="form-text small mt-1">You can override the default amount for this specific contract.</div>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="btnAddChargeToList" class="btn btn-primary rounded-pill px-4 shadow-sm">Add to Contract</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
+    <script>
+        $(document).ready(function () {
+
+            // ==========================================
+            // 1. CASCADING DROPDOWN (Building -> Unit)
+            // ==========================================
+            $('#BuildingSelect').change(function () {
+                var buildingId = $(this).val();
+                var unitSelect = $('#UnitSelect');
+
+                // Reset and disable unit dropdown while loading
+                unitSelect.empty();
+                unitSelect.append('<option value="">-- Select Unit --</option>');
+                unitSelect.prop('disabled', true);
+
+                if (buildingId) {
+                    // Call the OnGetUnitsAsync handler we made in the backend
+                    $.getJSON(`?handler=Units&buildingId=${buildingId}`, function (data) {
+                        $.each(data, function (i, item) {
+                            unitSelect.append($('<option>', {
+                                value: item.value,
+                                text: item.text
+                            }));
+                        });
+                        // Re-enable if units are found
+                        if(data.length > 0) {
+                            unitSelect.prop('disabled', false);
+                        }
+                    });
+                }
+            });
+
+            // ==========================================
+            // 2. ADD-ONS MODAL LOGIC
+            // ==========================================
+
+            // Parse the JSON data passed from the backend
+            const availableAddOns = @Html.Raw(Model.AvailableAddOnsJson);
+            let addOnIndex = 0; // Tracks row numbers for model binding
+
+            // Populate Modal Dropdown
+            const modalSelect = $('#modalChargeSelect');
+            availableAddOns.forEach(addon => {
+                modalSelect.append(new Option(addon.Name, addon.Id));
+            });
+
+            // Handle Modal Dropdown Change
+            modalSelect.change(function () {
+                const selectedId = $(this).val();
+                const addon = availableAddOns.find(a => a.Id === selectedId);
+
+                if (addon) {
+                    $('#modalChargeType').val(addon.ChargeType);
+                    $('#modalDefaultAmount').val(addon.DefaultAmount.toFixed(2));
+                    $('#modalAgreedAmount').val(addon.DefaultAmount.toFixed(2)); // Auto-fill agreed amount
+                } else {
+                    $('#modalChargeType').val('');
+                    $('#modalDefaultAmount').val('');
+                    $('#modalAgreedAmount').val('');
+                }
+            });
+
+            // Handle "Add to Contract" Button inside Modal
+            $('#btnAddChargeToList').click(function () {
+                const selectedId = $('#modalChargeSelect').val();
+                const name = $('#modalChargeSelect option:selected').text();
+                const type = $('#modalChargeType').val();
+                const amount = parseFloat($('#modalAgreedAmount').val());
+
+                if (!selectedId || isNaN(amount)) {
+                    alert("Please select a charge and enter a valid agreed amount.");
+                    return;
+                }
+
+                // Hide empty state row
+                $('#emptyStateRow').hide();
+
+                // Create the row HTML.
+                // Notice the hidden inputs! These are required so the data submits to the backend list.
+                const tr = $(`
+                    <tr>
+                        <td class="fw-bold text-dark">
+                            ${name}
+                            <input type="hidden" name="SelectedAddOns[${addOnIndex}].ChargeDefinitionId" value="${selectedId}" />
+                        </td>
+                        <td class="text-muted small">${type}</td>
+                        <td class="text-end fw-bold text-primary">
+                            ₱${amount.toFixed(2)}
+                            <input type="hidden" name="SelectedAddOns[${addOnIndex}].AgreedAmount" value="${amount}" />
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle remove-addon">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
+
+                $('#addonsTable tbody').append(tr);
+                addOnIndex++; // Increment index for the next item
+
+                // Reset and close modal
+                $('#modalChargeSelect').val('').trigger('change');
+                var modal = bootstrap.Modal.getInstance(document.getElementById('addonModal'));
+                modal.hide();
+            });
+
+            // Handle Remove Button inside Table
+            $('#addonsTable').on('click', '.remove-addon', function () {
+                $(this).closest('tr').remove();
+
+                // Show empty state if no rows left (excluding the empty state row itself)
+                if ($('#addonsTable tbody tr').length === 1) {
+                    $('#emptyStateRow').show();
+                }
+            });
+        });
+    </script>
 }

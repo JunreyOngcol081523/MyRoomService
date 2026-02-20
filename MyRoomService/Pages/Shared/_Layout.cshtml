@@ -14,15 +14,24 @@
     @if (User.Identity?.IsAuthenticated == true)
     {
         <div class="d-flex vh-100 overflow-hidden">
-            <aside class="bg-dark text-white d-flex flex-column flex-shrink-0 p-3" style="width: 260px;">
-                <a asp-area="" asp-page="/Index" class="d-flex align-items-center mb-4 text-white text-decoration-none">
-                    <i class="bi bi-buildings fs-3 me-2 text-primary"></i>
-                    <span class="fs-4 fw-bold">RentFlow</span>
-                </a>
+
+            @* --- SIDEBAR (Responsive Offcanvas) --- *@
+            <aside class="offcanvas-md offcanvas-start bg-dark text-white d-flex flex-column flex-shrink-0 p-3" tabindex="-1" id="appSidebar" style="width: 260px;">
+
+                @* Branding & Mobile Close Button *@
+                <div class="d-flex align-items-center justify-content-between mb-4">
+                    <a asp-area="" asp-page="/Index" class="d-flex align-items-center text-white text-decoration-none">
+                        <i class="bi bi-buildings fs-3 me-2 text-primary"></i>
+                        <span class="fs-4 fw-bold">RentFlow</span>
+                    </a>
+                    @* This close button only shows on mobile (d-md-none) *@
+                    <button type="button" class="btn-close btn-close-white d-md-none" data-bs-dismiss="offcanvas" data-bs-target="#appSidebar" aria-label="Close"></button>
+                </div>
 
                 <hr class="text-white-50 mt-0">
 
-                <ul class="nav nav-pills flex-column mb-auto" id="sidebarMenu">
+                @* Navigation Links *@
+                <ul class="nav nav-pills flex-column mb-auto overflow-auto" id="sidebarMenu">
                     <li class="nav-item mb-1">
                         <a asp-page="/Index" class="nav-link text-white" aria-current="page">
                             <i class="bi bi-grid me-2"></i> Dashboard
@@ -79,6 +88,7 @@
 
                 <hr class="text-white-50">
 
+                @* Logout Area *@
                 <div class="mt-2">
                     <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Page("/Index", new { area = "" })" method="post" class="w-100">
                         <button type="submit" class="nav-link text-white bg-transparent border-0 w-100 text-start d-flex align-items-center rounded hover-bg-danger">
@@ -88,11 +98,21 @@
                     </form>
                 </div>
             </aside>
+
+            @* --- MAIN CONTENT AREA --- *@
             <div class="d-flex flex-column flex-grow-1 overflow-auto bg-light">
 
                 <header class="bg-white border-bottom py-3 px-4 shadow-sm sticky-top">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fw-semibold text-dark">@ViewData["Title"]</h5>
+
+                        @* Mobile Menu Toggle & Title *@
+                        <div class="d-flex align-items-center">
+                            @* Hamburger Button (Only shows on mobile: d-md-none) *@
+                            <button class="btn btn-light border d-md-none me-3 shadow-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#appSidebar" aria-controls="appSidebar">
+                                <i class="bi bi-list fs-5"></i>
+                            </button>
+                            <h5 class="mb-0 fw-semibold text-dark">@ViewData["Title"]</h5>
+                        </div>
 
                         <div>
                             <partial name="_LoginPartial" />
@@ -141,8 +161,8 @@
     }
     else
     {
+        @* Unauthenticated View Stays the Same *@
         <div class="d-flex flex-column min-vh-100 bg-light">
-
             <header class="bg-white border-bottom py-3 shadow-sm">
                 <div class="container d-flex justify-content-between align-items-center">
                     <a asp-area="" asp-page="/Index" class="text-decoration-none d-flex align-items-center">
