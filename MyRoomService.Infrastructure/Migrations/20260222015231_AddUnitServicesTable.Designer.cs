@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyRoomService.Infrastructure.Persistence;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyRoomService.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260222015231_AddUnitServicesTable")]
+    partial class AddUnitServicesTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -522,9 +525,6 @@ namespace MyRoomService.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("ChargeDefinitionId")
-                        .HasColumnType("uuid");
-
                     b.Property<decimal>("MonthlyPrice")
                         .HasColumnType("decimal(10, 2)");
 
@@ -539,8 +539,6 @@ namespace MyRoomService.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ChargeDefinitionId");
 
                     b.HasIndex("UnitId");
 
@@ -697,19 +695,11 @@ namespace MyRoomService.Infrastructure.Migrations
 
             modelBuilder.Entity("MyRoomService.Domain.Entities.UnitService", b =>
                 {
-                    b.HasOne("MyRoomService.Domain.Entities.ChargeDefinition", "ChargeDefinition")
-                        .WithMany()
-                        .HasForeignKey("ChargeDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.HasOne("MyRoomService.Domain.Entities.Unit", "Unit")
                         .WithMany("UnitServices")
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("ChargeDefinition");
 
                     b.Navigation("Unit");
                 });

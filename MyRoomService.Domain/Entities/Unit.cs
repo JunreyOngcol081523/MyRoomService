@@ -26,6 +26,7 @@ namespace MyRoomService.Domain.Entities
 
         public UnitStatus Status { get; set; } = UnitStatus.Available;
         public ICollection<Contract> Contracts { get; set; } = new List<Contract>();
+        public ICollection<UnitService> UnitServices { get; set; } = new List<UnitService>();
     }
     public enum UnitStatus
     {

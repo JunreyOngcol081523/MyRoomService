@@ -1,0 +1,177 @@
+﻿@page "{id:Guid}"
+@model MyRoomService.Pages.Contracts.DetailsModel
+@{
+    // We do NOT want the standard web layout (no navbars, no sidebars)
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lease Agreement - @Model.Contract.Occupant.LastName</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        /* Make it look like a legal document */
+        body {
+            font-family: "Times New Roman", Times, serif; /* Standard legal font */
+            color: #000;
+            background-color: #f8f9fa; /* Grey background for the screen */
+        }
+
+        .paper-document {
+            background-color: white;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 60px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+
+        .legal-text {
+            text-align: justify;
+            line-height: 1.6;
+        }
+
+        .signature-line {
+            border-bottom: 1px solid #000;
+            width: 100%;
+            display: inline-block;
+            margin-top: 40px;
+            margin-bottom: 5px;
+        }
+
+        /* --- PRINT MAGIC --- */
+        /* When the user hits Ctrl+P or the Print button, this CSS runs */
+        @@media print {
+            body {
+                background-color: white;
+            }
+
+            .paper-document {
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                max-width: 100%;
+            }
+
+            .no-print {
+                display: none !important; /* Hides the print button on the paper */
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="text-center py-3 bg-dark no-print sticky-top">
+        <button onclick="window.print()" class="btn btn-primary btn-lg px-5 fw-bold shadow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-printer me-2" viewBox="0 0 16 16">
+                <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" />
+                <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z" />
+            </svg>
+            Print / Save to PDF
+        </button>
+        <a href="javascript:history.back()" class="btn btn-outline-light ms-3">Cancel</a>
+    </div>
+
+    <div class="paper-document">
+        <div class="text-center mb-5">
+            <h1 class="fw-bold text-uppercase" style="letter-spacing: 2px;">Lease Agreement</h1>
+            <p class="text-muted">Contract Reference: @Model.Contract.Id.ToString().Substring(0, 8).ToUpper()</p>
+        </div>
+
+        <p class="legal-text mb-4">
+            This Lease Agreement (the "Agreement") is entered into on this <strong>@DateTime.Today.ToString("MMMM dd, yyyy")</strong>, by and between:
+        </p>
+
+        <div class="row mb-4 ps-4">
+            <div class="col-6">
+                <strong>LANDLORD:</strong><br />
+                @Model.OwnerName
+            </div>
+            <div class="col-6">
+                <strong>TENANT (OCCUPANT):</strong><br />
+                @Model.Contract.Occupant.FirstName @Model.Contract.Occupant.LastName
+            </div>
+        </div>
+
+        <p class="legal-text mb-4">
+            The Landlord hereby agrees to lease the premises located at <strong>@Model.Contract.Unit.Building.Name, Unit @Model.Contract.Unit.UnitNumber</strong> (the "Premises") to the Tenant, subject to the terms and conditions outlined below.
+        </p>
+
+        <h4 class="fw-bold mt-5 mb-3">1. Lease Term & Financials</h4>
+        <ul class="legal-text">
+            <li><strong>Start Date:</strong> @Model.Contract.StartDate.ToString("MMMM dd, yyyy")</li>
+            <li>
+                <strong>End Date:</strong>
+                @(Model.Contract.EndDate.HasValue? Model.Contract.EndDate.Value.ToString("MMMM dd, yyyy") : "Month-to-Month (No set end date)")
+            </li>
+            <li><strong>Base Monthly Rent:</strong> ₱@Model.Contract.RentAmount.ToString("N2")</li>
+            <li><strong>Billing Date:</strong> The @Model.Contract.BillingDay@GetDaySuffix(Model.Contract.BillingDay) of every month.</li>
+        </ul>
+
+        <h4 class="fw-bold mt-4 mb-3">2. Recurring Add-on Charges</h4>
+        @if (Model.Contract.AddOns != null && Model.Contract.AddOns.Any())
+        {
+            <p class="legal-text">In addition to the base rent, the Tenant agrees to pay the following recurring charges:</p>
+            <table class="table table-sm table-bordered border-dark legal-text">
+                <thead>
+                    <tr>
+                        <th>Charge Description</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var addon in Model.Contract.AddOns)
+                    {
+                        <tr>
+                            <td>@addon.ChargeDefinition.Name (@addon.ChargeDefinition.ChargeType)</td>
+                            <td>₱@addon.AgreedAmount.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="legal-text">There are no additional recurring charges assigned to this contract at this time.</p>
+        }
+
+        <h4 class="fw-bold mt-5 mb-3">3. Terms and Conditions</h4>
+        <p class="legal-text">
+            The Tenant agrees to maintain the property in good condition, adhere to all building rules and regulations, and pay rent on or before the agreed billing date. Failure to remit payment within the specified grace period may result in penalties or immediate termination of this agreement at the Landlord's discretion.
+        </p>
+
+        <div class="row mt-5 pt-5">
+            <div class="col-5">
+                <span class="signature-line"></span>
+                <div class="text-center fw-bold">Landlord Signature</div>
+                <div class="text-center small text-muted">@Model.OwnerName</div>
+            </div>
+            <div class="col-2"></div>
+            <div class="col-5">
+                <span class="signature-line"></span>
+                <div class="text-center fw-bold">Tenant Signature</div>
+                <div class="text-center small text-muted">@Model.Contract.Occupant.FirstName @Model.Contract.Occupant.LastName</div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
+
+@* Helper function for 1st, 2nd, 3rd, 4th suffix *@
+@functions {
+    public string GetDaySuffix(int day)
+    {
+        if (day >= 11 && day <= 13) return "th";
+        switch (day % 10)
+        {
+            case 1: return "st";
+            case 2: return "nd";
+            case 3: return "rd";
+            default: return "th";
+        }
+    }
+}

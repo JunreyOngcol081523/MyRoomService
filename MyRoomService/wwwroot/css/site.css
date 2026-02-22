@@ -38,3 +38,76 @@ body {
         box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
         filter: brightness(90%);
     }
+
+/* =========================================
+   MOSSY HOLLOW THEME OVERRIDES
+   ========================================= */
+:root {
+    /* The Core Palette */
+    --moss-dark: #3D4127;
+    --moss-primary: #636B2F;
+    --moss-secondary: #BAC095;
+    --moss-light: #D4DE95;
+    /* Override Bootstrap Variables */
+    --bs-primary: var(--moss-primary);
+    --bs-primary-rgb: 99, 107, 47;
+    --bs-secondary: var(--moss-secondary);
+    --bs-secondary-rgb: 186, 192, 149;
+    --bs-dark: var(--moss-dark);
+    --bs-dark-rgb: 61, 65, 39;
+    --bs-info: var(--moss-light);
+    --bs-info-rgb: 212, 222, 149;
+    /* Base Body Text */
+    --bs-body-color: var(--moss-dark);
+}
+
+/* 1. Global App Background (A very faint tint of the moss-light) */
+body {
+    background-color: #F9FAF6;
+}
+
+/* 2. Primary Button Styling & Hover States */
+.btn-primary {
+    background-color: var(--moss-primary);
+    border-color: var(--moss-primary);
+    color: white;
+}
+
+    .btn-primary:hover,
+    .btn-primary:focus,
+    .btn-primary:active {
+        background-color: var(--moss-dark) !important;
+        border-color: var(--moss-dark) !important;
+        color: white !important;
+    }
+
+/* 3. Outline Primary Button */
+.btn-outline-primary {
+    color: var(--moss-primary);
+    border-color: var(--moss-primary);
+}
+
+    .btn-outline-primary:hover {
+        background-color: var(--moss-primary);
+        border-color: var(--moss-primary);
+        color: white;
+    }
+
+/* 4. Customizing Links */
+a {
+    color: var(--moss-primary);
+}
+
+    a:hover {
+        color: var(--moss-dark);
+    }
+
+/* 5. Avatar / Badge customizations from your previous code */
+.text-primary {
+    color: var(--moss-primary) !important;
+}
+
+.bg-primary {
+    background-color: var(--moss-primary) !important;
+    color: #ffffff !important; /* <-- Add this to make the icon visible! */
+}

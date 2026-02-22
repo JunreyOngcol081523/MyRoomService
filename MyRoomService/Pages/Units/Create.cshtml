@@ -8,30 +8,31 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
 
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-white py-3">
                     <h4 class="mb-0">Add New Unit to <span class="text-primary">@Model.BuildingName</span></h4>
                 </div>
                 <div class="card-body p-4">
-                    <form method="post">
+                    <form method="post" id="unitForm">
                         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                         <input type="hidden" asp-for="BuildingId" />
 
-                        <div class="row g-3">
+                        <h5 class="fw-bold mb-3 text-secondary border-bottom pb-2">Unit Details</h5>
+                        <div class="row g-3 mb-4">
                             <div class="col-md-6">
-                                <label asp-for="Unit.UnitNumber" class="form-label">Unit Number / Name</label>
+                                <label asp-for="Unit.UnitNumber" class="form-label fw-semibold">Unit Number / Name</label>
                                 <input asp-for="Unit.UnitNumber" class="form-control" placeholder="e.g. Room 101" />
                                 <span asp-validation-for="Unit.UnitNumber" class="text-danger"></span>
                             </div>
 
                             <div class="col-md-6">
-                                <label asp-for="Unit.FloorLevel" class="form-label">Floor Level</label>
+                                <label asp-for="Unit.FloorLevel" class="form-label fw-semibold">Floor Level</label>
                                 <input asp-for="Unit.FloorLevel" class="form-control" type="number" />
                                 <span asp-validation-for="Unit.FloorLevel" class="text-danger"></span>
                             </div>
 
                             <div class="col-md-6">
-                                <label asp-for="Unit.RentalMode" class="form-label">Rental Mode</label>
+                                <label asp-for="Unit.RentalMode" class="form-label fw-semibold">Rental Mode</label>
                                 <select asp-for="Unit.RentalMode" class="form-select">
                                     <option value="ENTIRE_UNIT">Entire Unit (Apartment)</option>
                                     <option value="PER_BED">Per Bed (Dormitory)</option>
@@ -39,12 +40,12 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label asp-for="Unit.MaxOccupancy" class="form-label">Max Occupancy</label>
+                                <label asp-for="Unit.MaxOccupancy" class="form-label fw-semibold">Max Occupancy</label>
                                 <input asp-for="Unit.MaxOccupancy" class="form-control" type="number" />
                             </div>
 
                             <div class="col-md-6">
-                                <label asp-for="Unit.DefaultRate" class="form-label">Default Rate (Monthly)</label>
+                                <label asp-for="Unit.DefaultRate" class="form-label fw-semibold">Default Rate (Monthly)</label>
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
                                     <input asp-for="Unit.DefaultRate" class="form-control" type="number" step="0.01" />
@@ -53,18 +54,50 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label asp-for="Unit.Status" class="form-label fw-semibold small">Initial Status</label>
+                                <label asp-for="Unit.Status" class="form-label fw-semibold">Initial Status</label>
                                 <select asp-for="Unit.Status"
                                         asp-items="Html.GetEnumSelectList<MyRoomService.Domain.Entities.UnitStatus>()"
-                                        class="form-select rounded-3">
+                                        class="form-select">
                                 </select>
-                                <span asp-validation-for="Unit.Status" class="text-danger small"></span>
+                                <span asp-validation-for="Unit.Status" class="text-danger"></span>
                             </div>
+                        </div>
+
+                        @* --- UNIT SERVICES / CHARGES SECTION --- *@
+                        <div class="d-flex justify-content-between align-items-center mb-3 mt-5 border-bottom pb-2">
+                            <div>
+                                <h5 class="fw-bold mb-0 text-info">
+                                    <i class="bi bi-tags me-2"></i>Unit Services & Amenities
+                                </h5>
+                                <p class="text-muted small mb-0 mt-1">Add baseline charges tied to this unit (e.g., Included Wi-Fi, Premium View).</p>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#serviceModal">
+                                <i class="bi bi-plus-lg me-1"></i> Add Service
+                            </button>
+                        </div>
+
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover align-middle mb-0 border" id="servicesTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Service / Charge Name</th>
+                                        <th class="text-end">Monthly Price</th>
+                                        <th class="text-center" style="width: 80px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr id="emptyStateRow">
+                                        <td colspan="3" class="text-center py-4 text-muted small">
+                                            No services added. Click "Add Service" to include default charges for this unit.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
                         <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
                             <a asp-page="/Buildings/ManageBuilding" asp-route-id="@Model.BuildingId" class="btn btn-light px-4">Cancel</a>
-                            <button type="submit" class="btn btn-primary px-4">Create Unit</button>
+                            <button type="submit" class="btn btn-primary px-5 shadow-sm fw-bold">Create Unit</button>
                         </div>
                     </form>
                 </div>
@@ -72,3 +105,105 @@
         </div>
     </div>
 </div>
+
+@* --- UNIT SERVICE MODAL --- *@
+<div class="modal fade" id="serviceModal" tabindex="-1" aria-labelledby="serviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark" id="serviceModalLabel">Add Unit Service</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-muted small text-uppercase">Service Name</label>
+                    <input type="text" id="modalServiceName" class="form-control border-secondary" placeholder="e.g. High-Speed Wi-Fi" />
+                    <div class="form-text small">Enter the name of the service tied to this unit.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold text-primary small text-uppercase">Monthly Price ($)</label>
+                    <input type="number" id="modalMonthlyPrice" step="0.01" class="form-control border-primary shadow-sm fw-bold" placeholder="0.00" />
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="btnAddServiceToList" class="btn btn-primary px-4 shadow-sm">Add to Unit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        $(document).ready(function () {
+            let serviceIndex = 0;
+
+            $('#btnAddServiceToList').click(function () {
+                const name = $('#modalServiceName').val().trim();
+                const price = parseFloat($('#modalMonthlyPrice').val());
+
+                if (!name || isNaN(price)) {
+                    alert("Please provide a valid service name and monthly price.");
+                    return;
+                }
+
+                $('#emptyStateRow').hide();
+
+                // Generate new row HTML with hidden inputs mapping to the code-behind model
+                const tr = $(`
+                    <tr>
+                        <td class="fw-bold text-dark">
+                            ${name}
+                            <input type="hidden" name="SelectedServices[${serviceIndex}].Name" value="${name}" />
+                        </td>
+                        <td class="text-end fw-bold text-primary">
+                            $${price.toFixed(2)}
+                            <input type="hidden" name="SelectedServices[${serviceIndex}].MonthlyPrice" value="${price}" />
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle remove-service">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `);
+
+                $('#servicesTable tbody').append(tr);
+                serviceIndex++;
+
+                // Reset modal fields
+                $('#modalServiceName').val('');
+                $('#modalMonthlyPrice').val('');
+
+                var modal = bootstrap.Modal.getInstance(document.getElementById('serviceModal'));
+                modal.hide();
+
+                reindexServices();
+            });
+
+            $('#servicesTable').on('click', '.remove-service', function () {
+                $(this).closest('tr').remove();
+
+                if ($('#servicesTable tbody tr').not('#emptyStateRow').length === 0) {
+                    $('#emptyStateRow').show();
+                }
+
+                reindexServices();
+            });
+
+            // Ensures arrays are perfectly sequential (0, 1, 2) for C# binding
+            function reindexServices() {
+                $('#servicesTable tbody tr').not('#emptyStateRow').each(function(index) {
+                    $(this).find('input[name*="Name"]').attr('name', `SelectedServices[${index}].Name`);
+                    $(this).find('input[name*="MonthlyPrice"]').attr('name', `SelectedServices[${index}].MonthlyPrice`);
+                });
+                serviceIndex = $('#servicesTable tbody tr').not('#emptyStateRow').length;
+            }
+        });
+    </script>
+}

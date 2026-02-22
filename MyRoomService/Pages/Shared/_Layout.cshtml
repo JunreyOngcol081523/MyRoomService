@@ -16,8 +16,8 @@
         <div class="d-flex vh-100 overflow-hidden">
 
             @* --- SIDEBAR (Responsive Offcanvas) --- *@
-            <aside class="offcanvas-md offcanvas-start bg-dark text-white d-flex flex-column flex-shrink-0 p-3" tabindex="-1" id="appSidebar" style="width: 260px;">
-
+            @* UPDATED: Replaced bg-dark with explicit inline style to guarantee the moss-dark theme applies correctly *@
+            <aside class="offcanvas-md offcanvas-start bg-dark text-white d-flex flex-column flex-shrink-0 p-3 shadow" tabindex="-1" id="appSidebar" style="width: 260px;">
                 @* Branding & Mobile Close Button *@
                 <div class="d-flex align-items-center justify-content-between mb-4">
                     <a asp-area="" asp-page="/Index" class="d-flex align-items-center text-white text-decoration-none">
@@ -100,7 +100,8 @@
             </aside>
 
             @* --- MAIN CONTENT AREA --- *@
-            <div class="d-flex flex-column flex-grow-1 overflow-auto bg-light">
+            @* UPDATED: Removed bg-light so the global CSS background color applies *@
+            <div class="d-flex flex-column flex-grow-1 overflow-auto">
 
                 <header class="bg-white border-bottom py-3 px-4 shadow-sm sticky-top">
                     <div class="d-flex justify-content-between align-items-center">
@@ -153,7 +154,7 @@
 
                 <footer class="bg-white border-top py-3 text-muted text-center mt-auto">
                     <div class="container-fluid small">
-                        &copy; 2026 - RentFlow - <a asp-area="" asp-page="/Privacy">Privacy Policy</a>
+                        &copy; @DateTime.Now.Year - RentFlow - <a asp-area="" asp-page="/Privacy">Privacy Policy</a>
                     </div>
                 </footer>
             </div>
@@ -161,8 +162,9 @@
     }
     else
     {
-        @* Unauthenticated View Stays the Same *@
-        <div class="d-flex flex-column min-vh-100 bg-light">
+        @* Unauthenticated View *@
+        @* UPDATED: Removed bg-light here too *@
+        <div class="d-flex flex-column min-vh-100">
             <header class="bg-white border-bottom py-3 shadow-sm">
                 <div class="container d-flex justify-content-between align-items-center">
                     <a asp-area="" asp-page="/Index" class="text-decoration-none d-flex align-items-center">
@@ -184,7 +186,7 @@
 
             <footer class="bg-white border-top py-4 text-muted text-center mt-auto">
                 <div class="container small">
-                    &copy; 2026 - RentFlow. <a asp-area="" asp-page="/Privacy" class="text-decoration-none">Privacy Policy</a> |
+                    &copy; @DateTime.Now.Year - RentFlow. <a asp-area="" asp-page="/Privacy" class="text-decoration-none">Privacy Policy</a> |
                     <a asp-area="" asp-page="/Contact" class="text-decoration-none">Contact Us</a>
                 </div>
             </footer>

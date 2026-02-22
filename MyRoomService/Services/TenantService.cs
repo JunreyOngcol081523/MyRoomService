@@ -1,9 +1,12 @@
-﻿using MyRoomService.Domain.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using MyRoomService.Domain.Interfaces;
+using MyRoomService.Infrastructure.Persistence;
 using System.Security.Claims;
 
 public class TenantService : ITenantService
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
+    
 
     public TenantService(IHttpContextAccessor httpContextAccessor)
     {
@@ -35,4 +38,5 @@ public class TenantService : ITenantService
 
         return Guid.Empty;
     }
+
 }

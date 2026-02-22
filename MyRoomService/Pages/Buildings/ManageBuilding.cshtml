@@ -65,7 +65,7 @@
                 </li>
                 <li class="nav-item">
                     <button class="nav-link fw-semibold" id="rates-tab" data-bs-toggle="tab" data-bs-target="#rates" type="button">
-                        <i class="bi bi-tags me-1"></i> Charges
+                        <i class="bi bi-tags me-1"></i> Configure Global Charges
                     </button>
                 </li>
             </ul>
@@ -91,6 +91,7 @@
                                 <tr>
                                     <th>Unit #</th>
                                     <th>Floor</th>
+                                    <th>Rental Mode</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
@@ -103,14 +104,19 @@
                                         <tr>
                                             <td><strong>@unit.UnitNumber</strong></td>
                                             <td>Floor @unit.FloorLevel</td>
+                                            <td class="text-capitalize">@(unit.RentalMode.ToString().Replace("_", " ").ToLower())</td>
                                             <td>
                                                 <span class="badge @(unit.Status == UnitStatus.Available ? "bg-success" : "bg-warning") rounded-pill">
                                                     @unit.Status.ToString()
                                                 </span>
                                             </td>
                                             <td>
-                                                <div class="btn-group">
-                                                    <a asp-page="/Units/Edit" asp-route-id="@unit.Id" class="btn btn-sm btn-light border">
+                                                <div class="btn-group shadow-sm">
+                                                    <a asp-page="/Units/Details" asp-route-id="@unit.Id" class="btn btn-sm btn-light border text-primary" title="View Details">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+
+                                                    <a asp-page="/Units/Edit" asp-route-id="@unit.Id" class="btn btn-sm btn-light border text-secondary" title="Edit Unit">
                                                         <i class="bi bi-pencil"></i>
                                                     </a>
                                                 </div>
@@ -121,7 +127,7 @@
                                 else
                                 {
                                     <tr>
-                                        <td colspan="4" class="text-center py-4 text-muted italic">
+                                        <td colspan="5" class="text-center py-4 text-muted italic">
                                             No units added yet. Click "Add Unit" to begin.
                                         </td>
                                     </tr>

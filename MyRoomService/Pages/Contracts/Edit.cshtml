@@ -1,100 +1,78 @@
-﻿@page "{occupantId:Guid}"
-@model MyRoomService.Pages.Contracts.CreateModel
+﻿@page "{id:Guid}"
+@model MyRoomService.Pages.Contracts.EditModel
 @{
-    ViewData["Title"] = "Create Contract";
+    ViewData["Title"] = "Edit Contract";
 }
 
 <div class="container-fluid py-4 px-lg-5">
     @* --- Header --- *@
     <div class="d-flex justify-content-between align-items-end mb-4">
         <div>
-            <h2 class="fw-bold mb-0 text-dark">New Contract</h2>
-            <p class="text-muted mb-0">Creating agreement for <span class="fw-bold text-primary">@Model.OccupantName</span></p>
+            <h2 class="fw-bold mb-0 text-dark">Edit Contract</h2>
+            <p class="text-muted mb-0">Updating agreement for <span class="fw-bold text-primary">@Model.OccupantName</span></p>
         </div>
         <a asp-page="/Contracts/Index"
            asp-route-occupantId="@Model.Contract.OccupantId" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
-            <i class="bi bi-x-lg me-2"></i>Cancel
+            <i class="bi bi-arrow-left me-2"></i>Back to List
         </a>
     </div>
 
     <form method="post">
-        @* HIDDEN FIELD: Essential to pass the ID back to the server *@
+        @* HIDDEN FIELDS: Critical for Entity Framework to know what to update *@
+        <input type="hidden" asp-for="Contract.Id" />
+        <input type="hidden" asp-for="Contract.TenantId" />
         <input type="hidden" asp-for="Contract.OccupantId" />
+        <input type="hidden" asp-for="Contract.UnitId" />
 
         <div class="row g-4">
-
-            @* --- Left Column: Property Details --- *@
+            @* --- Left Column: Locked Details --- *@
             <div class="col-lg-6">
-                <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card border-0 shadow-sm rounded-4 h-100 bg-light bg-opacity-50">
                     <div class="card-body p-4 p-xl-5">
-                        <h5 class="fw-bold mb-4 text-primary">
-                            <i class="bi bi-geo-alt-fill me-2"></i>Property Details
+                        <h5 class="fw-bold mb-4 text-secondary">
+                            <i class="bi bi-lock-fill me-2"></i>Locked Details
                         </h5>
+                        <p class="small text-muted mb-4">
+                            Occupant and Unit assignments cannot be changed once a contract is created.
+                        </p>
 
-                        @* READ-ONLY OCCUPANT FIELD *@
+                        @* OCCUPANT (Read-Only) *@
                         <div class="mb-4">
                             <label class="form-label fw-semibold text-muted small text-uppercase">Occupant Name</label>
                             <div class="input-group input-group-lg">
-                                <span class="input-group-text bg-light border-0"><i class="bi bi-person-check-fill text-muted"></i></span>
-                                <input type="text" class="form-control bg-light border-0 fw-bold text-dark" value="@Model.OccupantName" readonly />
+                                <span class="input-group-text bg-light border-0"><i class="bi bi-person-fill text-muted"></i></span>
+                                <input type="text" class="form-control bg-light border-0 fw-bold text-dark" value="@Model.OccupantName" readonly disabled />
                             </div>
                         </div>
 
-                        <hr class="my-4 border-secondary border-opacity-10" />
-
-                        @* BUILDING COMBOBOX *@
+                        @* UNIT (Read-Only) *@
                         <div class="mb-4">
-                            <label class="form-label fw-semibold text-muted small text-uppercase">Building</label>
-                            <select id="BuildingSelect" class="form-select form-select-lg rounded-3 bg-white border shadow-sm" asp-items="Model.BuildingsList">
-                                <option value="">-- Select Building --</option>
-                            </select>
-                        </div>
-
-                        @* UNIT COMBOBOX (Dependent) *@
-                        <div class="mb-2">
-                            <label asp-for="Contract.UnitId" class="form-label fw-semibold text-muted small text-uppercase">Unit</label>
-                            <select asp-for="Contract.UnitId" id="UnitSelect" class="form-select form-select-lg rounded-3 bg-light border-0" disabled>
-                                <option value="">-- Select Unit --</option>
-                                @* Options will be loaded via JavaScript based on Building selection *@
-                            </select>
-                            <div class="form-text small mt-2 text-muted">
-                                <i class="bi bi-info-circle me-1"></i>Select a building above to see available units.
+                            <label class="form-label fw-semibold text-muted small text-uppercase">Assigned Unit</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-light border-0"><i class="bi bi-door-open-fill text-muted"></i></span>
+                                <input type="text" class="form-control bg-light border-0 fw-bold text-dark" value="@Model.UnitDisplayName" readonly disabled />
                             </div>
-                            <span asp-validation-for="Contract.UnitId" class="text-danger small"></span>
                         </div>
-
-                        @* --- NEW: INCLUDED UNIT SERVICES CONTAINER --- *@
-                        <div id="unitServicesContainer" class="mt-4" style="display: none;">
-                            <label class="form-label fw-semibold text-muted small text-uppercase mb-2">Included Unit Services</label>
-                            <div class="bg-light border border-opacity-50 rounded-3 p-3">
-                                <table class="table table-sm table-borderless mb-0">
-                                    <tbody id="unitServicesList">
-                                        @* Javascript will inject unit baseline services here *@
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="form-text small mt-1 text-muted">These are baseline charges permanently attached to this unit.</div>
-                        </div>
-
                     </div>
                 </div>
             </div>
 
-            @* --- Right Column: Terms & Financials --- *@
+            @* --- Right Column: Editable Terms & Financials --- *@
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-body p-4 p-xl-5">
-                        <h5 class="fw-bold mb-4 text-success">
-                            <i class="bi bi-cash-coin me-2"></i>Terms & Rent
+                        <h5 class="fw-bold mb-4 text-primary">
+                            <i class="bi bi-pencil-square me-2"></i>Editable Terms
                         </h5>
 
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
                                 <label asp-for="Contract.StartDate" class="form-label fw-semibold text-muted small text-uppercase">Start Date</label>
                                 <input asp-for="Contract.StartDate" type="date" class="form-control form-control-lg rounded-3 bg-light border-0" />
+                                <span asp-validation-for="Contract.StartDate" class="text-danger small"></span>
                             </div>
                             <div class="col-md-6">
-                                <label asp-for="Contract.EndDate" class="form-label fw-semibold text-muted small text-uppercase">End Date (Optional)</label>
+                                <label asp-for="Contract.EndDate" class="form-label fw-semibold text-muted small text-uppercase">End Date</label>
                                 <input asp-for="Contract.EndDate" type="date" class="form-control form-control-lg rounded-3 bg-light border-0" />
                             </div>
                         </div>
@@ -104,8 +82,9 @@
                                 <label asp-for="Contract.RentAmount" class="form-label fw-semibold text-muted small text-uppercase">Base Monthly Rent</label>
                                 <div class="input-group input-group-lg shadow-none">
                                     <span class="input-group-text bg-light border-0 text-muted">₱</span>
-                                    <input asp-for="Contract.RentAmount" type="number" step="0.01" class="form-control bg-light border-0 fw-bold" placeholder="0.00" />
+                                    <input asp-for="Contract.RentAmount" type="number" step="0.01" class="form-control bg-light border-0 fw-bold" />
                                 </div>
+                                <span asp-validation-for="Contract.RentAmount" class="text-danger small"></span>
                             </div>
                             <div class="col-md-4">
                                 <label asp-for="Contract.BillingDay" class="form-label fw-semibold text-muted small text-uppercase">Billing Day</label>
@@ -114,9 +93,12 @@
                         </div>
 
                         <div class="mb-2">
-                            <label asp-for="Contract.Status" class="form-label fw-semibold text-muted small text-uppercase">Initial Status</label>
-                            <select asp-for="Contract.Status" class="form-select form-select-lg rounded-3 bg-light border-0" asp-items="Html.GetEnumSelectList<MyRoomService.Domain.Entities.ContractStatus>()">
+                            <label asp-for="Contract.Status" class="form-label fw-semibold text-muted small text-uppercase">Contract Status</label>
+                            <select asp-for="Contract.Status"
+                                    class="form-select form-select-lg rounded-3 bg-light border-0 fw-bold text-dark"
+                                    asp-items="Model.ContractStatusOptions">
                             </select>
+                            <div class="form-text small mt-2">Setting this to 'Ended' or 'Terminated' will free up the unit.</div>
                         </div>
                     </div>
                 </div>
@@ -129,9 +111,9 @@
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <div>
                                 <h5 class="fw-bold mb-0 text-info">
-                                    <i class="bi bi-plus-square-dotted me-2"></i>Optional Add-ons
+                                    <i class="bi bi-plus-square-dotted me-2"></i>Recurring Add-ons
                                 </h5>
-                                <p class="text-muted small mb-0 mt-1">Optional recurring charges billed with rent (e.g. Parking, Extra Bed).</p>
+                                <p class="text-muted small mb-0 mt-1">Manage optional recurring charges billed with rent.</p>
                             </div>
                             <button type="button" class="btn btn-outline-info rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#addonModal">
                                 <i class="bi bi-plus-lg me-1"></i> Add Charge
@@ -149,9 +131,33 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr id="emptyStateRow">
+                                    @if (Model.ExistingAddOns != null && Model.ExistingAddOns.Any())
+                                    {
+                                        int index = 0;
+                                        foreach (var addon in Model.ExistingAddOns)
+                                        {
+                                            <tr>
+                                                <td class="fw-bold text-dark">
+                                                    @addon.ChargeName
+                                                    <input type="hidden" name="SelectedAddOns[@index].ChargeDefinitionId" value="@addon.ChargeDefinitionId" />
+                                                </td>
+                                                <td class="text-muted small">@addon.ChargeType</td>
+                                                <td class="text-end fw-bold text-primary">
+                                                    ₱@addon.AgreedAmount.ToString("0.00")
+                                                    <input type="hidden" name="SelectedAddOns[@index].AgreedAmount" value="@addon.AgreedAmount" />
+                                                </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle remove-addon">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            index++;
+                                        }
+                                    }
+                                    <tr id="emptyStateRow" style="display: @(Model.ExistingAddOns != null && Model.ExistingAddOns.Any() ? "none" : "table-row");">
                                         <td colspan="4" class="text-center py-4 text-muted">
-                                            No add-ons selected. Click "Add Charge" to include optional items.
+                                            No add-ons selected. Click "Add Charge" to include items like Parking or Wi-Fi.
                                         </td>
                                     </tr>
                                 </tbody>
@@ -161,16 +167,19 @@
                 </div>
             </div>
 
-            <div class="col-12 text-end mt-2">
+            <div class="col-12 d-flex justify-content-end gap-3 mt-2">
+                <a asp-page="/Contracts/Index" asp-route-occupantId="@Model.Contract.OccupantId" class="btn btn-light btn-lg rounded-pill px-4 fw-bold">
+                    Cancel
+                </a>
                 <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 shadow-sm fw-bold">
-                    <i class="bi bi-file-earmark-check me-2"></i> Finalize Contract
+                    <i class="bi bi-save2 me-2"></i> Save Changes
                 </button>
             </div>
         </div>
     </form>
 </div>
 
-@* --- ADD-ON MODAL --- *@
+@* --- ADD-ON MODAL (Identical to Create page) --- *@
 <div class="modal fade" id="addonModal" tabindex="-1" aria-labelledby="addonModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
@@ -200,7 +209,6 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold text-primary small text-uppercase">Agreed Amount (₱)</label>
                     <input type="number" id="modalAgreedAmount" step="0.01" class="form-control form-control-lg border-primary shadow-sm rounded-3 fw-bold" placeholder="0.00" />
-                    <div class="form-text small mt-1">You can override the default amount for this specific contract.</div>
                 </div>
             </div>
             <div class="modal-footer border-top-0 pt-0">
@@ -218,96 +226,22 @@
 
     <script>
         $(document).ready(function () {
+            // Note: We don't need the Building/Unit Cascading dropdown code here because Unit is locked!
 
             // ==========================================
-            // 1. CASCADING DROPDOWN (Building -> Unit)
-            // ==========================================
-            $('#BuildingSelect').change(function () {
-                var buildingId = $(this).val();
-                var unitSelect = $('#UnitSelect');
-
-                // Reset and disable unit dropdown while loading
-                unitSelect.empty();
-                unitSelect.append('<option value="">-- Select Unit --</option>');
-                unitSelect.prop('disabled', true);
-
-                // Hide the unit services container
-                $('#unitServicesContainer').hide();
-
-                if (buildingId) {
-                    $.getJSON(`?handler=Units&buildingId=${buildingId}`, function (data) {
-                        $.each(data, function (i, item) {
-                            unitSelect.append($('<option>', {
-                                value: item.value,
-                                text: item.text
-                            }));
-                        });
-                        if(data.length > 0) {
-                            unitSelect.prop('disabled', false);
-                        }
-                    });
-                }
-            });
-
-            // ==========================================
-            // 2. FETCH UNIT SERVICES ON UNIT SELECTION
-            // ==========================================
-            $('#UnitSelect').change(function () {
-                var unitId = $(this).val();
-                var $container = $('#unitServicesContainer');
-                var $list = $('#unitServicesList');
-
-                // Clear out old services
-                $list.empty();
-
-                if (!unitId) {
-                    $container.hide();
-                    return;
-                }
-
-                // Fetch the baseline unit services
-                $.getJSON(`?handler=UnitServices&unitId=${unitId}`, function (data) {
-                    if (data && data.length > 0) {
-                        $.each(data, function (i, item) {
-                            // Render a read-only row with hidden inputs for snapshotting
-                            var row = `
-                                <tr>
-                                    <td class="fw-bold text-dark ps-0 border-bottom border-secondary border-opacity-10 py-2">
-                                        <i class="bi bi-check-circle-fill text-success me-2"></i>${item.name}
-                                        <input type="hidden" name="IncludedUnitServices[${i}].Name" value="${item.name}" />
-                                    </td>
-                                    <td class="text-end fw-bold text-muted pe-0 border-bottom border-secondary border-opacity-10 py-2">
-                                        ₱${parseFloat(item.monthlyPrice).toFixed(2)}
-                                        <input type="hidden" name="IncludedUnitServices[${i}].MonthlyPrice" value="${item.monthlyPrice}" />
-                                    </td>
-                                </tr>
-                            `;
-                            $list.append(row);
-                        });
-                        $container.fadeIn();
-                    } else {
-                        // Show empty state inside the container
-                        $list.append('<tr><td class="text-muted small ps-0 fst-italic">No base services included with this unit.</td></tr>');
-                        $container.fadeIn();
-                    }
-                });
-            });
-
-            // ==========================================
-            // 3. ADD-ONS MODAL LOGIC
+            // ADD-ONS MODAL LOGIC
             // ==========================================
 
-            // Parse the JSON data passed from the backend
-            const availableAddOns = @Html.Raw(Model.AvailableAddOnsJson);
-            let addOnIndex = 0;
+            const availableAddOns = @Html.Raw(Model.AvailableAddOnsJson ?? "[]");
 
-            // Populate Modal Dropdown
+            // Set the index to the current number of rows (minus the empty state row)
+            let addOnIndex = $('#addonsTable tbody tr').not('#emptyStateRow').length;
+
             const modalSelect = $('#modalChargeSelect');
             availableAddOns.forEach(addon => {
                 modalSelect.append(new Option(addon.Name, addon.Id));
             });
 
-            // Handle Modal Dropdown Change
             modalSelect.change(function () {
                 const selectedId = $(this).val();
                 const addon = availableAddOns.find(a => a.Id === selectedId);
@@ -323,7 +257,6 @@
                 }
             });
 
-            // Handle "Add to Contract" Button inside Modal
             $('#btnAddChargeToList').click(function () {
                 const selectedId = $('#modalChargeSelect').val();
                 const name = $('#modalChargeSelect option:selected').text();
@@ -337,6 +270,7 @@
 
                 $('#emptyStateRow').hide();
 
+                // Generate new row HTML using the updated index
                 const tr = $(`
                     <tr>
                         <td class="fw-bold text-dark">
@@ -362,16 +296,33 @@
                 $('#modalChargeSelect').val('').trigger('change');
                 var modal = bootstrap.Modal.getInstance(document.getElementById('addonModal'));
                 modal.hide();
+
+                // Re-index all hidden inputs to prevent binding errors if they delete a row in the middle
+                reindexAddOns();
             });
 
-            // Handle Remove Button inside Table
             $('#addonsTable').on('click', '.remove-addon', function () {
                 $(this).closest('tr').remove();
 
-                if ($('#addonsTable tbody tr').length === 1) {
+                if ($('#addonsTable tbody tr').not('#emptyStateRow').length === 0) {
                     $('#emptyStateRow').show();
                 }
+
+                // Re-index after removing
+                reindexAddOns();
             });
+
+            // Function to ensure the indexes (0, 1, 2) are sequential before form submission
+            function reindexAddOns() {
+                $('#addonsTable tbody tr').not('#emptyStateRow').each(function(index) {
+                    $(this).find('input[name*="ChargeDefinitionId"]').attr('name', `SelectedAddOns[${index}].ChargeDefinitionId`);
+                    $(this).find('input[name*="AgreedAmount"]').attr('name', `SelectedAddOns[${index}].AgreedAmount`);
+                });
+                addOnIndex = $('#addonsTable tbody tr').not('#emptyStateRow').length;
+            }
+
+            // Re-index immediately on page load just to be safe
+            reindexAddOns();
         });
     </script>
 }

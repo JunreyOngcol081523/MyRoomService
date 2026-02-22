@@ -20,7 +20,6 @@ namespace MyRoomService.Domain.Entities
         // Links this service to a specific Unit using Guid
         public Guid UnitId { get; set; }
         public Unit? Unit { get; set; }
-
         // Changed to Guid to match IMustHaveTenant refactor
         public Guid TenantId { get; set; }
     }

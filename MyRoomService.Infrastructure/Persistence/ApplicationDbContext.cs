@@ -18,6 +18,7 @@ namespace MyRoomService.Infrastructure.Persistence
         public DbSet<Tenant> Tenants { get; set; }
         public DbSet<Building> Buildings { get; set; }
         public DbSet<Unit> Units { get; set; }
+        public DbSet<UnitService> UnitServices { get; set; }
         public DbSet<Occupant> Occupants { get; set; }
         public DbSet<ChargeDefinition> ChargeDefinitions { get; set; }
         public DbSet<Contract> Contracts { get; set; }
