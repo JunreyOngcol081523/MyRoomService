@@ -3,8 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
 using MyRoomService.Infrastructure.Persistence;
+using MyRoomService.Services;
 using MyRoomService.Web.Services; // Ensure this points to your actual context folder
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Get the Connection String
@@ -27,6 +29,7 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 })
 .AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, AdditionalUserClaimsPrincipalFactory>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddRazorPages();
 
 var app = builder.Build();

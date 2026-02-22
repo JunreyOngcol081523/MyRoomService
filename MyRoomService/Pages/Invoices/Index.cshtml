@@ -1,0 +1,193 @@
+﻿@page
+@model MyRoomService.Pages.Invoices.IndexModel
+@{
+    ViewData["Title"] = "Invoices";
+}
+
+<div class="container-fluid py-4 px-lg-5">
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="alert alert-info alert-dismissible fade show shadow-sm" role="alert">
+            <i class="bi bi-info-circle-fill me-2"></i> @Model.StatusMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0 text-dark">Active Invoices</h2>
+            <p class="text-muted mb-0">Manage and track unpaid occupant billing.</p>
+        </div>
+
+        <form method="post" asp-page-handler="Generate">
+            <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">
+                <i class="bi bi-lightning-charge-fill me-2"></i> Run Billing Cycle
+            </button>
+        </form>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+            <form method="get" class="row g-3">
+                <input type="hidden" asp-for="PageSize" />
+
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Search Occupant</label>
+                    <input type="text" class="form-control" asp-for="SearchName" placeholder="Name..." />
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label text-muted small fw-bold">Status</label>
+                    <select class="form-select" asp-for="StatusFilter">
+                        <option value="">All Active</option>
+                        <option value="UNPAID">Unpaid</option>
+                        <option value="PARTIAL">Partial</option>
+                        <option value="OVERDUE">Overdue</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label text-muted small fw-bold">Building</label>
+                    <select class="form-select" asp-for="BuildingId" asp-items="Model.BuildingOptions" onchange="this.form.submit()">
+                        <option value="">All Buildings</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label text-muted small fw-bold">Unit</label>
+                    <select class="form-select" asp-for="UnitId" asp-items="Model.UnitOptions">
+                        <option value="">All Units</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label text-muted small fw-bold">Date Range</label>
+                    <div class="input-group">
+                        <input type="date" class="form-control" asp-for="StartDate" />
+                        <span class="input-group-text">to</span>
+                        <input type="date" class="form-control" asp-for="EndDate" />
+                    </div>
+                </div>
+
+                <div class="col-12 d-flex justify-content-end mt-3">
+                    <a asp-page="./Index" class="btn btn-light rounded-pill px-4 me-2 border">Clear Filters</a>
+                    <button type="submit" class="btn btn-secondary rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-funnel-fill me-1"></i> Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-body p-4">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted small">Showing @Model.Invoices.Count of @Model.TotalCount invoices</span>
+                <form method="get" class="d-flex align-items-center">
+                    <input type="hidden" asp-for="SearchName" />
+                    <input type="hidden" asp-for="StatusFilter" />
+                    <input type="hidden" asp-for="BuildingId" />
+                    <input type="hidden" asp-for="UnitId" />
+                    <input type="hidden" asp-for="StartDate" />
+                    <input type="hidden" asp-for="EndDate" />
+
+                    <label class="text-muted small me-2">Entries per page:</label>
+                    <select class="form-select form-select-sm w-auto" asp-for="PageSize" onchange="this.form.submit()">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                </form>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Invoice ID</th>
+                            <th>Occupant</th>
+                            <th>Unit</th>
+                            <th>Date</th>
+                            <th>Due Date</th>
+                            <th class="text-end">Total Amount</th>
+                            <th class="text-center">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Invoices.Any())
+                        {
+                            foreach (var invoice in Model.Invoices)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-page="./Details" asp-route-id="@invoice.Id" class="fw-bold text-decoration-none">
+                                            @invoice.Id.ToString().Substring(0, 8).ToUpper()
+                                        </a>
+                                    </td>
+                                    <td class="fw-bold">@invoice.Occupant?.FullName</td>
+                                    <td>@invoice.Contract?.Unit?.UnitNumber</td>
+                                    <td>@invoice.InvoiceDate.ToString("MMM dd, yyyy")</td>
+                                    <td>@invoice.DueDate.ToString("MMM dd, yyyy")</td>
+                                    <td class="text-end fw-bold text-primary">₱@invoice.TotalAmount.ToString("N2")</td>
+                                    <td class="text-center">
+                                        <span class="badge @(invoice.Status == "PAID" ? "bg-success" : (invoice.Status == "OVERDUE" ? "bg-danger" : "bg-warning text-dark")) rounded-pill">
+                                            @invoice.Status
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="bi bi-search display-4 d-block mb-3 opacity-50"></i>
+                                    No active invoices found matching your criteria.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="mt-4 d-flex justify-content-end">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(Model.PageIndex == 1 ? "disabled" : "")">
+                            <a class="page-link" asp-route-PageIndex="@(Model.PageIndex - 1)"
+                               asp-route-SearchName="@Model.SearchName" asp-route-StatusFilter="@Model.StatusFilter"
+                               asp-route-BuildingId="@Model.BuildingId" asp-route-UnitId="@Model.UnitId"
+                               asp-route-StartDate="@Model.StartDate" asp-route-EndDate="@Model.EndDate" asp-route-PageSize="@Model.PageSize">
+                                Previous
+                            </a>
+                        </li>
+
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                                <a class="page-link" asp-route-PageIndex="@i"
+                                   asp-route-SearchName="@Model.SearchName" asp-route-StatusFilter="@Model.StatusFilter"
+                                   asp-route-BuildingId="@Model.BuildingId" asp-route-UnitId="@Model.UnitId"
+                                   asp-route-StartDate="@Model.StartDate" asp-route-EndDate="@Model.EndDate" asp-route-PageSize="@Model.PageSize">
+                                    @i
+                                </a>
+                            </li>
+                        }
+
+                        <li class="page-item @(Model.PageIndex == Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" asp-route-PageIndex="@(Model.PageIndex + 1)"
+                               asp-route-SearchName="@Model.SearchName" asp-route-StatusFilter="@Model.StatusFilter"
+                               asp-route-BuildingId="@Model.BuildingId" asp-route-UnitId="@Model.UnitId"
+                               asp-route-StartDate="@Model.StartDate" asp-route-EndDate="@Model.EndDate" asp-route-PageSize="@Model.PageSize">
+                                Next
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
+    </div>
+</div>

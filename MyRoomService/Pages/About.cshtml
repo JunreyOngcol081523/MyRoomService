@@ -1,0 +1,111 @@
+﻿@page
+@model AboutModel
+@{
+    ViewData["Title"] = "About RentFlow";
+}
+
+<div class="container py-5 px-lg-5">
+    <div class="row align-items-center mb-5 pb-lg-5">
+        <div class="col-lg-6">
+            <h6 class="text-primary fw-bold text-uppercase tracking-wider mb-3">Our Mission</h6>
+            <h1 class="display-4 fw-bold text-dark mb-4">Simplifying Property Management for the Modern Landlord.</h1>
+            <p class="lead text-muted mb-4">
+                RentFlow was born out of a simple observation: managing properties shouldn't feel like a second full-time job. We've built a command center that puts your portfolio, your occupants, and your finances in one place.
+            </p>
+            <div class="d-flex gap-3">
+                <a asp-page="/Index" class="btn btn-primary rounded-pill px-4 py-2 shadow-sm fw-bold">View Dashboard</a>
+                <a asp-page="/Contact" class="btn btn-outline-secondary rounded-pill px-4 py-2 fw-bold">Get in Touch</a>
+            </div>
+        </div>
+        <div class="col-lg-6 mt-5 mt-lg-0">
+            <div class="position-relative">
+                <div class="bg-primary bg-opacity-10 rounded-5 p-5 position-relative z-1">
+                    <img src="~/images/rentflow_about_image.png"
+                         alt="Successful Landlord and Tenant"
+                         class="img-fluid mx-auto d-block rounded-4 shadow"
+                         style="max-height: 400px; object-fit: cover;">
+                </div>
+                <div class="position-absolute top-0 start-0 translate-middle bg-warning rounded-circle opacity-25" style="width: 100px; height: 100px; z-index: 0;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-12 text-center mb-4">
+            <h2 class="fw-bold">The Three Pillars of RentFlow</h2>
+            <p class="text-muted">Designed to scale with your growing real estate portfolio.</p>
+        </div>
+
+        <div class="col-md-4 text-center">
+            <div class="p-4 h-100 rounded-4 transition-hover">
+                <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-4 d-inline-block mb-4">
+                    <i class="bi bi-building-gear fs-1"></i>
+                </div>
+                <h4 class="fw-bold">Automated Portfolio</h4>
+                <p class="text-muted">Track buildings and units with zero friction. Whether you have 5 rooms or 500, our system adapts to your structure.</p>
+            </div>
+        </div>
+
+        <div class="col-md-4 text-center">
+            <div class="p-4 h-100 rounded-4 transition-hover">
+                <div class="bg-success bg-opacity-10 text-success rounded-circle p-4 d-inline-block mb-4">
+                    <i class="bi bi-graph-up-arrow fs-1"></i>
+                </div>
+                <h4 class="fw-bold">Financial Clarity</h4>
+                <p class="text-muted">No more "who owes what." Track collections, manage partial payments, and view your real-time collection efficiency.</p>
+            </div>
+        </div>
+
+        <div class="col-md-4 text-center">
+            <div class="p-4 h-100 rounded-4 transition-hover">
+                <div class="bg-info bg-opacity-10 text-info rounded-circle p-4 d-inline-block mb-4">
+                    <i class="bi bi-shield-lock fs-1"></i>
+                </div>
+                <h4 class="fw-bold">Secure Access</h4>
+                <p class="text-muted">Encrypted data silos ensure that your business information remains private and secure, accessible only to those you authorize.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-lg-10 mx-auto">
+            <div class="card border-0 bg-dark text-white rounded-5 shadow-lg overflow-hidden">
+                <div class="row g-0">
+                    <div class="col-md-8 p-5">
+                        <h3 class="fw-bold mb-4">Why we built this?</h3>
+                        <p class="opacity-75 mb-4 lh-lg">
+                            We believe that technology should serve the person, not the other way around. Most property management software is either too expensive or too complicated for independent landlords.
+                            <strong>RentFlow</strong> is the "Goldilocks" solution—powerful enough for growth, but simple enough to master in ten minutes.
+                        </p>
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <div class="bg-primary rounded-circle" style="width: 50px; height: 50px;"></div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <h6 class="mb-0 fw-bold">The RentFlow Team</h6>
+                                <small class="opacity-50">Built with ❤️ in the Philippines</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 bg-primary bg-opacity-25 d-none d-md-flex align-items-center justify-content-center">
+                        <i class="bi bi-lightning-charge-fill display-1 text-white opacity-25"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .transition-hover {
+        transition: transform 0.3s ease;
+    }
+
+        .transition-hover:hover {
+            transform: translateY(-10px);
+        }
+
+    .tracking-wider {
+        letter-spacing: 0.1rem;
+    }
+</style>

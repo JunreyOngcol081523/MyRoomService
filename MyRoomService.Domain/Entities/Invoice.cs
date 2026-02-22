@@ -20,7 +20,10 @@ namespace MyRoomService.Domain.Entities
 
         [Column(TypeName = "decimal(10, 2)")]
         public decimal TotalAmount { get; set; }
+        public decimal AmountPaid { get; set; } = 0;
 
+        // Optional but helpful: A calculated property for what is still owed
+        public decimal BalanceDue => TotalAmount - AmountPaid;
         public string Status { get; set; } = "UNPAID"; // UNPAID, PAID, PARTIAL, OVERDUE, VOID
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

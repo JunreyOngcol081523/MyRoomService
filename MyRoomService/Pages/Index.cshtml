@@ -4,54 +4,123 @@
     ViewData["Title"] = "Dashboard";
 }
 
-<div class="container py-5">
+<div class="container-fluid py-4 px-lg-5">
     <div class="row mb-4">
         <div class="col-12">
-            <h1 class="fw-bold text-dark">Welcome to RentFlow</h1>
-            <p class="text-muted">Your complete property management command center.</p>
-            <hr />
+            <h2 class="fw-bold text-dark mb-1">Financial Overview</h2>
+            <p class="text-muted">Real-time performance for @DateTime.Now.ToString("MMMM yyyy")</p>
         </div>
     </div>
 
     @if (User.Identity.IsAuthenticated)
     {
+        <div class="row g-4 mb-5">
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 bg-primary text-white h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <i class="bi bi-cash-stack fs-2 opacity-50"></i>
+                            <span class="badge bg-white text-primary rounded-pill">Monthly</span>
+                        </div>
+                        <h6 class="text-uppercase fw-bold opacity-75 small">Total Collected</h6>
+                        <h2 class="fw-bold mb-0">₱@Model.MonthlyCollection.ToString("N2")</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <i class="bi bi-exclamation-circle text-danger fs-2"></i>
+                            <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill">Outstanding</span>
+                        </div>
+                        <h6 class="text-uppercase text-muted fw-bold small">Total Collectibles</h6>
+                        <h2 class="fw-bold mb-0">₱@Model.TotalCollectibles.ToString("N2")</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <i class="bi bi-people text-warning fs-2"></i>
+                        </div>
+                        <h6 class="text-uppercase text-muted fw-bold small">Unpaid Occupants</h6>
+                        <h2 class="fw-bold mb-0">@Model.UnpaidOccupantsCount <span class="fs-6 fw-normal text-muted">/ @Model.TotalOccupants</span></h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6 col-lg-3">
+                <div class="card border-0 shadow-sm rounded-4 h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <i class="bi bi-graph-up-arrow text-success fs-2"></i>
+                        </div>
+                        <h6 class="text-uppercase text-muted fw-bold small">Collection Rate</h6>
+                        <h2 class="fw-bold mb-2">@Model.CollectionEfficiency.ToString("N1")%</h2>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: @Model.CollectionEfficiency%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row g-4">
-            <div class="col-md-4">
-                <div class="card h-100 shadow-sm border-0 rounded-4 transition-hover">
-                    <div class="card-body p-4">
-                        <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-3 d-inline-block mb-3">
-                            <i class="bi bi-building fs-3"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">Portfolio</h5>
-                        <p class="card-text text-muted">View and manage your registered buildings and property details.</p>
-                        <a asp-page="/Buildings/Index" class="btn btn-outline-primary stretched-link rounded-pill">Manage Buildings</a>
+            <div class="col-lg-8">
+                <h4 class="fw-bold mb-4">Quick Management</h4>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <a asp-page="/Invoices/Index" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-hover h-100">
+                            <div class="card-body p-4 d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-3 me-3">
+                                    <i class="bi bi-receipt-cutoff fs-4"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark">Active Billing</h6>
+                                    <small class="text-muted">Review unpaid invoices</small>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a asp-page="/Occupants/Index" class="card border-0 shadow-sm rounded-4 text-decoration-none transition-hover h-100">
+                            <div class="card-body p-4 d-flex align-items-center">
+                                <div class="bg-success bg-opacity-10 text-success rounded-3 p-3 me-3">
+                                    <i class="bi bi-person-plus fs-4"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 fw-bold text-dark">Occupants</h6>
+                                    <small class="text-muted">Manage tenant profiles</small>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto text-muted"></i>
+                            </div>
+                        </a>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-4">
-                <div class="card h-100 shadow-sm border-0 rounded-4 transition-hover">
-                    <div class="card-body p-4">
-                        <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-3 d-inline-block mb-3">
-                            <i class="bi bi-people fs-3"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">Occupants & Contracts</h5>
-                        <p class="card-text text-muted">Manage tenant profiles, active lease agreements, and monthly add-ons.</p>
-                        <a asp-page="/Occupants/Index" class="btn btn-outline-primary stretched-link rounded-pill">Open Manager</a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card h-100 shadow-sm border-0 rounded-4 transition-hover opacity-75">
-                    <div class="card-body p-4">
-                        <div class="bg-warning bg-opacity-10 text-warning rounded-3 p-3 d-inline-block mb-3">
-                            <i class="bi bi-cash-stack fs-3"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">Billing & Invoices</h5>
-                        <p class="card-text text-muted">Monitor rent collection and generate monthly tenant invoices.</p>
-                        <button class="btn btn-outline-warning rounded-pill disabled">Coming Soon</button>
-                    </div>
+            <div class="col-lg-4">
+                <h4 class="fw-bold mb-4">Portfolio Summary</h4>
+                <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                            <span class="text-muted"><i class="bi bi-building me-2"></i> Total Buildings</span>
+                            <span class="fw-bold">@Model.TotalBuildings</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center p-3">
+                            <span class="text-muted"><i class="bi bi-door-open me-2"></i> Total Occupants</span>
+                            <span class="fw-bold">@Model.TotalOccupants</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center p-3 bg-light">
+                            <span class="text-muted"><i class="bi bi-shield-check me-2"></i> System Status</span>
+                            <span class="badge bg-success rounded-pill">Operational</span>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -59,25 +128,22 @@
     else
     {
         <div class="p-5 mb-4 bg-light rounded-5 shadow-sm text-center">
-            <div class="container-fluid py-5">
-                <h2 class="display-5 fw-bold">RentFlow</h2>
-                <p class="col-md-8 fs-4 mx-auto text-muted">
-                    Sign in to access your business portal and start managing your properties with ease.
-                </p>
-                <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4">
-                    <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary btn-lg px-5 rounded-pill shadow">Login Now</a>
-                    <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-outline-secondary btn-lg px-5 rounded-pill">Create Account</a>
-                </div>
+            <h2 class="display-5 fw-bold">RentFlow</h2>
+            <p class="col-md-8 fs-4 mx-auto text-muted">Sign in to access your business portal.</p>
+            <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4">
+                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary btn-lg px-5 rounded-pill shadow">Login Now</a>
             </div>
         </div>
     }
 </div>
 
 <style>
-    /* Add a subtle hover effect to cards */
-    .transition-hover:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.1) !important;
-        transition: all 0.3s ease;
+    .transition-hover {
+        transition: all 0.2s ease-in-out;
     }
+
+        .transition-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 1rem 3rem rgba(0,0,0,.1) !important;
+        }
 </style>

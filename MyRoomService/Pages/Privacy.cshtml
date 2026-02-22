@@ -3,6 +3,92 @@
 @{
     ViewData["Title"] = "Privacy Policy";
 }
-<h1>@ViewData["Title"]</h1>
 
-<p>Use this page to detail your site's privacy policy.</p>
+<div class="container py-5 px-lg-5">
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-3 d-inline-block mb-3">
+                <i class="bi bi-shield-lock fs-1"></i>
+            </div>
+            <h1 class="fw-bold text-dark">Privacy Policy</h1>
+            <p class="text-muted">Last Updated: @DateTime.Now.ToString("MMMM dd, yyyy")</p>
+            <hr class="w-25 mx-auto" />
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-4 p-md-5">
+
+                    <section class="mb-5">
+                        <h4 class="fw-bold text-primary mb-3"><i class="bi bi-info-circle me-2"></i>Introduction</h4>
+                        <p class="text-muted lh-lg">
+                            Welcome to <strong>RentFlow</strong>. We value your privacy and the security of your data. This policy explains how we collect, use, and protect information within our property management command center, specifically regarding property owners (Landlords) and their residents (Occupants).
+                        </p>
+                    </section>
+
+                    <section class="mb-5">
+                        <h4 class="fw-bold text-primary mb-3"><i class="bi bi-database-add me-2"></i>Information We Collect</h4>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 h-100 bg-light">
+                                    <h6 class="fw-bold">Property Data</h6>
+                                    <p class="small text-muted mb-0">Information about buildings, units, and rental rates used for billing generation.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 h-100 bg-light">
+                                    <h6 class="fw-bold">Occupant Information</h6>
+                                    <p class="small text-muted mb-0">Full names, contact details, and contract terms required for managing tenancies.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 h-100 bg-light">
+                                    <h6 class="fw-bold">Financial Records</h6>
+                                    <p class="small text-muted mb-0">Invoice history, payment status, and partial payment records (AmountPaid/BalanceDue).</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 h-100 bg-light">
+                                    <h6 class="fw-bold">Authentication Data</h6>
+                                    <p class="small text-muted mb-0">Login credentials and tenant identity identifiers managed via secure encryption.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="mb-5">
+                        <h4 class="fw-bold text-primary mb-3"><i class="bi bi-incognito me-2"></i>How We Use Your Data</h4>
+                        <ul class="list-group list-group-flush text-muted lh-lg">
+                            <li class="list-group-item border-0 px-0"><i class="bi bi-check2-circle text-success me-2"></i>To generate and track monthly billing cycles.</li>
+                            <li class="list-group-item border-0 px-0"><i class="bi bi-check2-circle text-success me-2"></i>To facilitate payment processing and record-keeping.</li>
+                            <li class="list-group-item border-0 px-0"><i class="bi bi-check2-circle text-success me-2"></i>To provide dashboard analytics and collection efficiency reports.</li>
+                            <li class="list-group-item border-0 px-0"><i class="bi bi-check2-circle text-success me-2"></i>To notify occupants of outstanding balances and due dates.</li>
+                        </ul>
+                    </section>
+
+                    <section class="mb-5">
+                        <h4 class="fw-bold text-primary mb-3"><i class="bi bi-credit-card me-2"></i>Third-Party Payment Providers</h4>
+                        <p class="text-muted lh-lg">
+                            When you utilize our payment integration features (such as PayMongo or Xendit), your payment details are processed directly by those providers. <strong>RentFlow</strong> does not store full credit card numbers or banking passwords on our local servers.
+                        </p>
+                    </section>
+
+                    <section class="mb-4">
+                        <h4 class="fw-bold text-primary mb-3"><i class="bi bi-shield-check me-2"></i>Data Security</h4>
+                        <p class="text-muted lh-lg">
+                            We implement industry-standard security measures to protect your information from unauthorized access. Your data is restricted based on your <strong>Tenant ID</strong>, ensuring that property owners only see their own portfolio data and no one else's.
+                        </p>
+                    </section>
+
+                    <div class="bg-light p-4 rounded-4 text-center mt-5">
+                        <h5 class="fw-bold">Questions about your data?</h5>
+                        <p class="text-muted">Contact our support team at <a href="mailto:support@rentflow.ph" class="text-primary text-decoration-none fw-bold">support@rentflow.ph</a></p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

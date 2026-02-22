@@ -24,6 +24,7 @@ namespace MyRoomService.Domain.Entities
         public int BillingDay { get; set; } = 1; // Day of the month to generate invoice
         public ICollection<ContractAddOn> AddOns { get; set; } = new List<ContractAddOn>();
         public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+        public ICollection<ContractIncludedService> IncludedServices { get; set; } = new List<ContractIncludedService>();
     }
     public enum ContractStatus
     {
