@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyRoomService.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialSupabaseIdentity : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -65,7 +65,7 @@ namespace MyRoomService.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     SubscriptionStatus = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -133,7 +133,7 @@ namespace MyRoomService.Infrastructure.Migrations
                     Name = table.Column<string>(type: "text", nullable: false),
                     Address = table.Column<string>(type: "text", nullable: true),
                     BuildingType = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     IsArchived = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
@@ -266,8 +266,8 @@ namespace MyRoomService.Infrastructure.Migrations
                     OccupantId = table.Column<Guid>(type: "uuid", nullable: false),
                     UnitId = table.Column<Guid>(type: "uuid", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    StartDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    EndDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    StartDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    EndDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
                     RentAmount = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
                     BillingDay = table.Column<int>(type: "integer", nullable: false)
                 },
@@ -282,6 +282,27 @@ namespace MyRoomService.Infrastructure.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Contracts_Units_UnitId",
+                        column: x => x.UnitId,
+                        principalTable: "Units",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UnitServices",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    MonthlyPrice = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    UnitId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UnitServices", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UnitServices_Units_UnitId",
                         column: x => x.UnitId,
                         principalTable: "Units",
                         principalColumn: "Id",
@@ -316,6 +337,27 @@ namespace MyRoomService.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ContractIncludedService",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ContractId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Amount = table.Column<decimal>(type: "numeric(10,2)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ContractIncludedService", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ContractIncludedService_Contracts_ContractId",
+                        column: x => x.ContractId,
+                        principalTable: "Contracts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Invoices",
                 columns: table => new
                 {
@@ -323,11 +365,12 @@ namespace MyRoomService.Infrastructure.Migrations
                     TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     OccupantId = table.Column<Guid>(type: "uuid", nullable: false),
                     ContractId = table.Column<Guid>(type: "uuid", nullable: false),
-                    InvoiceDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DueDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    InvoiceDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    DueDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     TotalAmount = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
+                    AmountPaid = table.Column<decimal>(type: "numeric(10,2)", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -426,6 +469,11 @@ namespace MyRoomService.Infrastructure.Migrations
                 column: "ContractId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ContractIncludedService_ContractId",
+                table: "ContractIncludedService",
+                column: "ContractId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Contracts_OccupantId",
                 table: "Contracts",
                 column: "OccupantId");
@@ -454,6 +502,11 @@ namespace MyRoomService.Infrastructure.Migrations
                 name: "IX_Units_BuildingId",
                 table: "Units",
                 column: "BuildingId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UnitServices_UnitId",
+                table: "UnitServices",
+                column: "UnitId");
         }
 
         /// <inheritdoc />
@@ -478,7 +531,13 @@ namespace MyRoomService.Infrastructure.Migrations
                 name: "ContractAddOns");
 
             migrationBuilder.DropTable(
+                name: "ContractIncludedService");
+
+            migrationBuilder.DropTable(
                 name: "InvoiceItems");
+
+            migrationBuilder.DropTable(
+                name: "UnitServices");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");

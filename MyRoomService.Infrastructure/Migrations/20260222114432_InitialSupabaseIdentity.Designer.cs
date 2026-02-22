@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyRoomService.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260222015231_AddUnitServicesTable")]
-    partial class AddUnitServicesTable
+    [Migration("20260222114432_InitialSupabaseIdentity")]
+    partial class InitialSupabaseIdentity
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -39,7 +39,7 @@ namespace MyRoomService.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<bool>("IsArchived")
                         .HasColumnType("boolean");
@@ -298,7 +298,7 @@ namespace MyRoomService.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime?>("EndDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("OccupantId")
                         .HasColumnType("uuid");
@@ -307,7 +307,7 @@ namespace MyRoomService.Infrastructure.Migrations
                         .HasColumnType("decimal(10, 2)");
 
                     b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -354,23 +354,52 @@ namespace MyRoomService.Infrastructure.Migrations
                     b.ToTable("ContractAddOns");
                 });
 
+            modelBuilder.Entity("MyRoomService.Domain.Entities.ContractIncludedService", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(10, 2)");
+
+                    b.Property<Guid>("ContractId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContractId");
+
+                    b.ToTable("ContractIncludedService");
+                });
+
             modelBuilder.Entity("MyRoomService.Domain.Entities.Invoice", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("decimal(10, 2)");
+
                     b.Property<Guid>("ContractId")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("DueDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("InvoiceDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid>("OccupantId")
                         .HasColumnType("uuid");
@@ -465,7 +494,7 @@ namespace MyRoomService.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -652,6 +681,17 @@ namespace MyRoomService.Infrastructure.Migrations
                     b.Navigation("Contract");
                 });
 
+            modelBuilder.Entity("MyRoomService.Domain.Entities.ContractIncludedService", b =>
+                {
+                    b.HasOne("MyRoomService.Domain.Entities.Contract", "Contract")
+                        .WithMany("IncludedServices")
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Contract");
+                });
+
             modelBuilder.Entity("MyRoomService.Domain.Entities.Invoice", b =>
                 {
                     b.HasOne("MyRoomService.Domain.Entities.Contract", "Contract")
@@ -712,6 +752,8 @@ namespace MyRoomService.Infrastructure.Migrations
             modelBuilder.Entity("MyRoomService.Domain.Entities.Contract", b =>
                 {
                     b.Navigation("AddOns");
+
+                    b.Navigation("IncludedServices");
 
                     b.Navigation("Invoices");
                 });

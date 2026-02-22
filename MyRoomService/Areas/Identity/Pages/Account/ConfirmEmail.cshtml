@@ -1,0 +1,55 @@
+﻿@page
+@model ConfirmEmailModel
+@{
+    ViewData["Title"] = "Email Confirmation";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-7">
+            <div class="card shadow-lg border-0 rounded-lg">
+
+                <div class="card-header bg-primary text-white text-center py-4">
+                    <h3 class="fw-light my-1">Email Confirmation</h3>
+                    <p class="mb-0 small opacity-75">MyRoomService Landlord Portal</p>
+                </div>
+
+                <div class="card-body p-4 p-md-5 text-center">
+
+                    @if (Model.IsConfirmed)
+                    {
+                        <div style="font-size:64px;">✅</div>
+                        <h4 class="fw-bold mt-3 text-success">Email Confirmed!</h4>
+                        <p class="text-muted mt-2">
+                            Your email has been successfully verified.<br />
+                            You can now log in to your account.
+                        </p>
+                        <div class="d-grid mt-4">
+                            <a asp-page="./Login" class="btn btn-primary btn-lg rounded-pill">
+                                Go to Login
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="font-size:64px;">❌</div>
+                        <h4 class="fw-bold mt-3 text-danger">Confirmation Failed</h4>
+                        <p class="text-muted mt-2">
+                            The confirmation link is invalid or has expired.<br />
+                            Please request a new one below.
+                        </p>
+                        <div class="d-grid mt-4 gap-2">
+                            <a asp-page="./ResendEmailConfirmation" class="btn btn-primary btn-lg rounded-pill">
+                                Resend Confirmation Email
+                            </a>
+                            <a asp-page="./Login" class="btn btn-outline-secondary rounded-pill">
+                                Back to Login
+                            </a>
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

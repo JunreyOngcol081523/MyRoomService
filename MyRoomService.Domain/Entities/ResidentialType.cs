@@ -5,6 +5,7 @@
         Apartment,
         Dormitory,
         BoardingHouse,
+        CommercialSpace,
         MixedUseBuilding
     }
 }

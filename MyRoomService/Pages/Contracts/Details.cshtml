@@ -137,6 +137,38 @@
         {
             <p class="legal-text">There are no additional recurring charges assigned to this contract at this time.</p>
         }
+        <h4 class="fw-bold mt-4 mb-3">3. Included Unit Services</h4>
+        @if (Model.Contract.Unit.UnitServices != null && Model.Contract.Unit.UnitServices.Any())
+        {
+            <p class="legal-text">The following services are provided specifically for <strong>Unit @Model.Contract.Unit.UnitNumber</strong> and are included in the monthly obligations:</p>
+            <table class="table table-sm table-bordered border-dark legal-text">
+                <thead>
+                    <tr>
+                        <th>Service Name</th>
+                        <th>Monthly Fee</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var service in Model.Contract.Unit.UnitServices)
+                    {
+                        <tr>
+                            <td>@service.Name</td>
+                            <td>₱@service.MonthlyPrice.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td>Total Unit Services</td>
+                        <td>₱@Model.Contract.Unit.UnitServices.Sum(s => s.MonthlyPrice).ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+        }
+        else
+        {
+            <p class="legal-text">No specific unit-level services are assigned to this unit.</p>
+        }
 
         <h4 class="fw-bold mt-5 mb-3">3. Terms and Conditions</h4>
         <p class="legal-text">

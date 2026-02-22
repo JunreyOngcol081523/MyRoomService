@@ -3,11 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.WebUtilities;
 using MyRoomService.Domain.Entities;
-
-// IMPORTANT: Add these using statements to find your classes
-
 using System.ComponentModel.DataAnnotations;
+using System.Text;
 
 namespace MyRoomService.Areas.Identity.Pages.Account
 {
@@ -19,7 +18,7 @@ namespace MyRoomService.Areas.Identity.Pages.Account
         private readonly IUserEmailStore<ApplicationUser> _emailStore;
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
-        private readonly Infrastructure.Persistence.ApplicationDbContext _context; // We need this to save the Tenant
+        private readonly Infrastructure.Persistence.ApplicationDbContext _context;
 
         public RegisterModel(
             UserManager<ApplicationUser> userManager,
@@ -27,7 +26,7 @@ namespace MyRoomService.Areas.Identity.Pages.Account
             SignInManager<ApplicationUser> signInManager,
             ILogger<RegisterModel> logger,
             IEmailSender emailSender,
-            Infrastructure.Persistence.ApplicationDbContext context) // Added context here
+            Infrastructure.Persistence.ApplicationDbContext context)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -51,7 +50,6 @@ namespace MyRoomService.Areas.Identity.Pages.Account
             [Display(Name = "Email")]
             public string Email { get; set; }
 
-            // SAAS ADDITION: Let the user name their business/organization
             [Required]
             [Display(Name = "Business/Organization Name")]
             public string OrganizationName { get; set; }
@@ -77,9 +75,9 @@ namespace MyRoomService.Areas.Identity.Pages.Account
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
             returnUrl ??= Url.Content("~/");
+
             if (ModelState.IsValid)
             {
-                // Start a Transaction so we don't create "Ghost Tenants"
                 using var transaction = await _context.Database.BeginTransactionAsync();
 
                 try
@@ -92,13 +90,12 @@ namespace MyRoomService.Areas.Identity.Pages.Account
                         SubscriptionStatus = "ACTIVE"
                     };
 
-                    //_context.Tenants.Add(newTenant);
                     _context.Add(newTenant);
                     await _context.SaveChangesAsync();
 
-                    // 2. Create the User object
+                    // 2. Create the User
                     var user = CreateUser();
-                    user.TenantId = newTenant.Id; // Link them!
+                    user.TenantId = newTenant.Id;
 
                     await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
                     await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
@@ -108,16 +105,62 @@ namespace MyRoomService.Areas.Identity.Pages.Account
 
                     if (result.Succeeded)
                     {
-                        // Both worked! Commit to the database forever.
                         await transaction.CommitAsync();
-
                         _logger.LogInformation("User created a new account and a new Tenant.");
-                        await _signInManager.SignInAsync(user, isPersistent: false);
-                        return LocalRedirect(returnUrl);
+
+                        // ✅ Generate and ENCODE the token properly
+                        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                        var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
+
+                        var confirmationLink = Url.Page(
+                            "/Account/ConfirmEmail",
+                            pageHandler: null,
+                            values: new { area = "Identity", userId = user.Id, code = encodedToken },
+                            protocol: Request.Scheme
+                        );
+
+                        await _emailSender.SendEmailAsync(
+                            Input.Email,
+                            "Confirm your email - MyRoomService",
+                            $@"
+                            <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:40px;background:#f9f9f9;border-radius:10px;'>
+                                <div style='background:#ffffff;padding:30px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);'>
+
+                                    <h1 style='color:#0d6efd;font-size:26px;margin-bottom:4px;'>Welcome to MyRoomService! 🎉</h1>
+                                    <p style='color:#555;font-size:15px;margin-top:0;'>Your account has been created successfully.</p>
+
+                                    <hr style='border:none;border-top:1px solid #eee;margin:20px 0;'/>
+
+                                    <p style='color:#333;font-size:15px;'>Hi <strong>{Input.OrganizationName}</strong>,</p>
+                                    <p style='color:#555;font-size:14px;line-height:1.6;'>
+                                        Thank you for registering! Please confirm your email address to activate your account 
+                                        and start managing your properties.
+                                    </p>
+
+                                    <div style='text-align:center;margin:30px 0;'>
+                                        <a href='{confirmationLink}' 
+                                           style='display:inline-block;background:#0d6efd;color:#ffffff;
+                                                  padding:14px 32px;text-decoration:none;border-radius:6px;
+                                                  font-size:15px;font-weight:bold;letter-spacing:0.5px;'>
+                                            ✅ Confirm My Email
+                                        </a>
+                                    </div>
+
+                                    <p style='color:#888;font-size:12px;text-align:center;'>
+                                        This link will expire in 24 hours.<br/>
+                                        If you did not create an account, you can safely ignore this email.
+                                    </p>
+
+                                </div>
+                                <p style='color:#bbb;font-size:11px;text-align:center;margin-top:20px;'>
+                                    © MyRoomService · Property Management System
+                                </p>
+                            </div>"
+                        );
+
+                        return RedirectToPage("RegisterConfirmation", new { email = Input.Email });
                     }
 
-                    // If we got here, User creation failed. 
-                    // The Transaction will automatically "Roll back" (delete the Tenant we just made).
                     foreach (var error in result.Errors)
                     {
                         ModelState.AddModelError(string.Empty, error.Description);
@@ -127,9 +170,10 @@ namespace MyRoomService.Areas.Identity.Pages.Account
                 {
                     await transaction.RollbackAsync();
                     _logger.LogError(ex, "Error during registration.");
-                    ModelState.AddModelError(string.Empty, "A system error occurred.");
+                    ModelState.AddModelError(string.Empty, "A system error occurred. Please try again.");
                 }
             }
+
             return Page();
         }
 

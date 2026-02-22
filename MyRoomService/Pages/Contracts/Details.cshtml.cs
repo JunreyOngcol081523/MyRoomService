@@ -25,14 +25,15 @@ namespace MyRoomService.Pages.Contracts
         {
             var tenantId = _tenantService.GetTenantId();
 
-            // Fetch everything needed for the legal document
             Contract = await _context.Contracts
                 .Include(c => c.Occupant)
                 .Include(c => c.Unit)
                     .ThenInclude(u => u.Building)
+                .Include(c => c.Unit)
+                    .ThenInclude(u => u.UnitServices) // <--- CRITICAL: Add this line
                 .Include(c => c.AddOns)
                     .ThenInclude(a => a.ChargeDefinition)
-                .FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
+                .FirstOrDefaultAsync(m => m.Id == id);
 
             if (Contract == null) return NotFound();
 

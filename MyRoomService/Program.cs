@@ -1,40 +1,54 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
 using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
 using MyRoomService.Infrastructure.Persistence;
 using MyRoomService.Services;
-using MyRoomService.Web.Services; // Ensure this points to your actual context folder
+using MyRoomService.Web.Services;
 
+// Required for PostgreSQL timestamp compatibility
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Get the Connection String
+// 1. Database Configuration
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
-// 2. Setup PostgreSQL (Remove the SQL Server block!)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
-// Required to allow the service to "see" the browser's context
-builder.Services.AddHttpContextAccessor();
 
-// Register our custom Tenant Service
-builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-// 3. Setup Identity to use ApplicationUser (CLEAN & MERGED)
+// 2. Identity Configuration (MERGED INTO ONE BLOCK)
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
-    options.SignIn.RequireConfirmedAccount = false;
+    // Set to true to require email verification before login
+    options.SignIn.RequireConfirmedAccount = true;
+
+    // Password settings for easier development
+    options.Password.RequireDigit = false;
+    options.Password.RequiredLength = 6;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireLowercase = false;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>();
-builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, AdditionalUserClaimsPrincipalFactory>();
+
+// 3. Register Application Services
+// This registers the EmailSender class you created earlier
+builder.Services.AddTransient<IEmailSender, EmailSender>();
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, AdditionalUserClaimsPrincipalFactory>();
+
 builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 4. HTTP Request Pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
@@ -46,11 +60,12 @@ else
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles(); // Note: Changed MapStaticAssets back to UseStaticFiles for compatibility
+app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthentication(); // IMPORTANT: You were missing this line!
+// Authentication MUST come before Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
