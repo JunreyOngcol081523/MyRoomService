@@ -20,7 +20,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
-// 2. Identity Configuration (MERGED INTO ONE BLOCK)
+
+// 2. Identity Configuration
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
     // Set to true to require email verification before login
@@ -33,10 +34,10 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
     options.Password.RequireUppercase = false;
     options.Password.RequireLowercase = false;
 })
+.AddRoles<IdentityRole>() // ✅ CRITICAL FIX: Enables Role Management
 .AddEntityFrameworkStores<ApplicationDbContext>();
 
 // 3. Register Application Services
-// This registers the EmailSender class you created earlier
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 
 builder.Services.AddHttpContextAccessor();

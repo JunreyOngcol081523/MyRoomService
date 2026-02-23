@@ -105,10 +105,13 @@ namespace MyRoomService.Areas.Identity.Pages.Account
 
                     if (result.Succeeded)
                     {
-                        await transaction.CommitAsync();
-                        _logger.LogInformation("User created a new account and a new Tenant.");
+                        // 4. ASSIGN THE LANDLORD ROLE HERE
+                        await _userManager.AddToRoleAsync(user, "Landlord");
 
-                        // ✅ Generate and ENCODE the token properly
+                        await transaction.CommitAsync();
+                        _logger.LogInformation("User created a new account with Landlord role and a new Tenant.");
+
+                        // Generate and ENCODE the token properly
                         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                         var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
 
@@ -121,12 +124,12 @@ namespace MyRoomService.Areas.Identity.Pages.Account
 
                         await _emailSender.SendEmailAsync(
                             Input.Email,
-                            "Confirm your email - MyRoomService",
+                            "Confirm your email - RentFlow",
                             $@"
                             <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:40px;background:#f9f9f9;border-radius:10px;'>
                                 <div style='background:#ffffff;padding:30px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);'>
 
-                                    <h1 style='color:#0d6efd;font-size:26px;margin-bottom:4px;'>Welcome to MyRoomService! 🎉</h1>
+                                    <h1 style='color:#0d6efd;font-size:26px;margin-bottom:4px;'>Welcome to RentFlow! 🎉</h1>
                                     <p style='color:#555;font-size:15px;margin-top:0;'>Your account has been created successfully.</p>
 
                                     <hr style='border:none;border-top:1px solid #eee;margin:20px 0;'/>
@@ -170,7 +173,14 @@ namespace MyRoomService.Areas.Identity.Pages.Account
                 {
                     await transaction.RollbackAsync();
                     _logger.LogError(ex, "Error during registration.");
-                    ModelState.AddModelError(string.Empty, "A system error occurred. Please try again.");
+
+                    // --- TEMPORARY DEBUGGING CODE ---
+                    // This prints the exact technical error to the UI so we can read it
+                    ModelState.AddModelError(string.Empty, $"REAL ERROR: {ex.Message}");
+                    if (ex.InnerException != null)
+                    {
+                        ModelState.AddModelError(string.Empty, $"INNER ERROR: {ex.InnerException.Message}");
+                    }
                 }
             }
 

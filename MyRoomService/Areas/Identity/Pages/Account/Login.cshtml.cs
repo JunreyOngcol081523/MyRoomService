@@ -76,7 +76,6 @@ namespace MyRoomService.Areas.Identity.Pages.Account
             {
                 try
                 {
-                    // This is where the magic (and potential database crashes) happens
                     var result = await _signInManager.PasswordSignInAsync(
                         Input.Email,
                         Input.Password,
@@ -86,6 +85,25 @@ namespace MyRoomService.Areas.Identity.Pages.Account
                     if (result.Succeeded)
                     {
                         _logger.LogInformation("User logged in.");
+
+                        // --- SMART ROUTING LOGIC ---
+                        var user = await _userManager.FindByEmailAsync(Input.Email);
+                        if (user != null)
+                        {
+                            var roles = await _userManager.GetRolesAsync(user);
+
+                            if (roles.Contains("Occupant"))
+                            {
+                                return LocalRedirect("~/Portal/Index");
+                            }
+
+                            if (roles.Contains("Landlord") || roles.Contains("SystemAdmin"))
+                            {
+                                return LocalRedirect("~/Index");
+                            }
+                        }
+
+                        // Fallback if they somehow have no role
                         return LocalRedirect(returnUrl);
                     }
 
@@ -100,15 +118,11 @@ namespace MyRoomService.Areas.Identity.Pages.Account
                         return RedirectToPage("./Lockout");
                     }
 
-                    // Fallback for failed attempts that didn't throw an exception
                     ModelState.AddModelError(string.Empty, "Invalid login attempt.");
                 }
                 catch (Exception ex)
                 {
-                    // Log the actual technical horror for your eyes only
                     _logger.LogError(ex, "A database or network error occurred during login for {Email}", Input.Email);
-
-                    // Give the user a generic, non-scary message
                     ModelState.AddModelError(string.Empty, "The login service is temporarily unavailable. Please try again in a few moments.");
                 }
             }
