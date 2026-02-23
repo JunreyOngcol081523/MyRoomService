@@ -61,6 +61,12 @@
                                 <i class="bi bi-info-circle me-1"></i>Select a building above to see available units.
                             </div>
                             <span asp-validation-for="Contract.UnitId" class="text-danger small"></span>
+                            <div id="spacesAvailableLabel" class="mt-2" style="display:none;">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2">
+                                    <i class="bi bi-door-open me-1"></i>
+                                    Spaces Available: <strong id="spacesAvailableCount">0</strong>
+                                </span>
+                            </div>
                         </div>
 
                         @* --- NEW: INCLUDED UNIT SERVICES CONTAINER --- *@
@@ -222,32 +228,33 @@
             // ==========================================
             // 1. CASCADING DROPDOWN (Building -> Unit)
             // ==========================================
-            $('#BuildingSelect').change(function () {
-                var buildingId = $(this).val();
-                var unitSelect = $('#UnitSelect');
+        let unitsData = [];
 
-                // Reset and disable unit dropdown while loading
-                unitSelect.empty();
-                unitSelect.append('<option value="">-- Select Unit --</option>');
-                unitSelect.prop('disabled', true);
+        $('#BuildingSelect').change(function () {
+            var buildingId = $(this).val();
+            var unitSelect = $('#UnitSelect');
 
-                // Hide the unit services container
-                $('#unitServicesContainer').hide();
+            unitSelect.empty();
+            unitSelect.append('<option value="">-- Select Unit --</option>');
+            unitSelect.prop('disabled', true);
+            $('#unitServicesContainer').hide();
+            $('#spacesAvailableLabel').hide(); // reset label
 
-                if (buildingId) {
-                    $.getJSON(`?handler=Units&buildingId=${buildingId}`, function (data) {
-                        $.each(data, function (i, item) {
-                            unitSelect.append($('<option>', {
-                                value: item.value,
-                                text: item.text
-                            }));
-                        });
-                        if(data.length > 0) {
-                            unitSelect.prop('disabled', false);
-                        }
+            if (buildingId) {
+                $.getJSON(`?handler=Units&buildingId=${buildingId}`, function (data) {
+                    unitsData = data; // store for lookup
+                    $.each(data, function (i, item) {
+                        unitSelect.append($('<option>', {
+                            value: item.value,
+                            text: item.text
+                        }));
                     });
-                }
-            });
+                    if (data.length > 0) {
+                        unitSelect.prop('disabled', false);
+                    }
+                });
+            }
+        });
 
             // ==========================================
             // 2. FETCH UNIT SERVICES ON UNIT SELECTION
@@ -264,7 +271,11 @@
                     $container.hide();
                     return;
                 }
-
+                const selected = unitsData.find(u => u.value === unitId);
+                if (selected) {
+                    $('#spacesAvailableCount').text(selected.spacesAvailable);
+                    $('#spacesAvailableLabel').show();
+                }
                 // Fetch the baseline unit services
                 $.getJSON(`?handler=UnitServices&unitId=${unitId}`, function (data) {
                     if (data && data.length > 0) {

@@ -128,23 +128,79 @@
     }
     else
     {
-        <div class="p-5 mb-4 bg-light rounded-5 shadow-sm text-center">
-            <h2 class="display-5 fw-bold">RentFlow</h2>
-            <p class="col-md-8 fs-4 mx-auto text-muted">Sign in to access your business portal.</p>
-            <div class="d-grid gap-2 d-sm-flex justify-content-sm-center mt-4">
-                <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary btn-lg px-5 rounded-pill shadow">Login Now</a>
+        <div class="container py-5">
+            <div class="p-5 mb-5 bg-white rounded-5 shadow-lg border-0 text-center overflow-hidden position-relative">
+                <div class="py-4">
+                    <div class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 mb-3 fw-bold text-uppercase tracking-wider">
+                        Property Management Simplified
+                    </div>
+                    <h1 class="display-3 fw-extrabold text-dark mb-3">Rent<span class="text-primary">Flow</span></h1>
+                    <p class="col-lg-7 mx-auto fs-5 text-muted mb-5">
+                        The all-in-one business portal for landlords to manage units, track occupants/tenants,
+                        and automate billing with ease.
+                    </p>
+                    <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+                        <a asp-area="Identity" asp-page="/Account/Login" class="btn btn-primary btn-lg px-5 rounded-pill shadow-lg transition-hover">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Access Portal
+                        </a>
+                        <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-outline-secondary btn-lg px-5 rounded-pill">
+                            Get Started
+                        </a>
+                    </div>
+                </div>
+
+                <div class="position-absolute top-0 start-0 w-100 h-100 bg-light opacity-25 z-n1"></div>
+            </div>
+
+            <div class="row g-4 text-center">
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-4 rounded-4">
+                        <div class="feature-icon bg-primary bg-gradient text-white rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="bi bi-house-door fs-3"></i>
+                        </div>
+                        <h4 class="fw-bold">Unit Tracking</h4>
+                        <p class="text-muted small">Real-time status of your available and occupied rooms across all buildings.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-4 rounded-4">
+                        <div class="feature-icon bg-success bg-gradient text-white rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="bi bi-wallet2 fs-3"></i>
+                        </div>
+                        <h4 class="fw-bold">Automated Billing</h4>
+                        <p class="text-muted small">Generate invoices and track payments via GCash, Maya, and bank transfers.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100 border-0 shadow-sm p-4 rounded-4">
+                        <div class="feature-icon bg-info bg-gradient text-white rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="bi bi-people fs-3"></i>
+                        </div>
+                        <h4 class="fw-bold">Occupant Portal</h4>
+                        <p class="text-muted small">Provide tenants a dedicated space to view balances and capture payments instantly.</p>
+                    </div>
+                </div>
             </div>
         </div>
+
+
     }
 </div>
 
 <style>
     .transition-hover {
-        transition: all 0.2s ease-in-out;
+        transition: transform 0.2s ease-in-out;
     }
 
         .transition-hover:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 1rem 3rem rgba(0,0,0,.1) !important;
+            transform: translateY(-3px);
         }
+
+    .fw-extrabold {
+        font-weight: 800;
+    }
+
+    body {
+        background-color: #f8f9fa;
+    }
 </style>

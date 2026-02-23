@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
@@ -78,6 +79,30 @@ namespace MyRoomService.Infrastructure.Persistence
             builder.Entity<Contract>()
                 .Property(c => c.Status)
                 .HasConversion<int>();
+            // Seed Default Roles
+            builder.Entity<IdentityRole>().HasData(
+                new IdentityRole
+                {
+                    Id = "1a1c3b5d-8a5f-4a3b-9c2d-1e1f2a3b4c5d", // Use a static Guid for seeded data
+                    Name = "SystemAdmin",
+                    NormalizedName = "SYSTEMADMIN",
+                    ConcurrencyStamp = "1a1c3b5d-8a5f-4a3b-9c2d-1e1f2a3b4c5d"
+                },
+                new IdentityRole
+                {
+                    Id = "2b2d4c6e-9b6g-5b4c-0d3e-2f2g3b4c5d6e",
+                    Name = "Landlord",
+                    NormalizedName = "LANDLORD",
+                    ConcurrencyStamp = "2b2d4c6e-9b6g-5b4c-0d3e-2f2g3b4c5d6e"
+                },
+                new IdentityRole
+                {
+                    Id = "3c3e5d7f-0c7h-6c5d-1e4f-3g3h4c5d6e7f",
+                    Name = "Occupant",
+                    NormalizedName = "OCCUPANT",
+                    ConcurrencyStamp = "3c3e5d7f-0c7h-6c5d-1e4f-3g3h4c5d6e7f"
+                }
+            );
         }
     }
 }

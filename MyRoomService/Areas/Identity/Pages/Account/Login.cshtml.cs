@@ -74,45 +74,46 @@ namespace MyRoomService.Areas.Identity.Pages.Account
 
             if (ModelState.IsValid)
             {
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
-
-                if (result.Succeeded)
+                try
                 {
-                    _logger.LogInformation("User logged in.");
-                    return LocalRedirect(returnUrl);
-                }
+                    // This is where the magic (and potential database crashes) happens
+                    var result = await _signInManager.PasswordSignInAsync(
+                        Input.Email,
+                        Input.Password,
+                        Input.RememberMe,
+                        lockoutOnFailure: false);
 
-                if (result.RequiresTwoFactor)
-                {
-                    return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
-                }
-
-                if (result.IsLockedOut)
-                {
-                    _logger.LogWarning("User account locked out.");
-                    return RedirectToPage("./Lockout");
-                }
-
-                if (result.IsNotAllowed)
-                {
-                    var user = await _userManager.FindByEmailAsync(Input.Email);
-                    if (user != null && !await _userManager.IsEmailConfirmedAsync(user))
+                    if (result.Succeeded)
                     {
-                        _logger.LogWarning("Unconfirmed email login attempt: {Email}", Input.Email);
-                        return RedirectToPage("./ResendEmailConfirmation");
-                    }
-                    else
-                    {
-                        ModelState.AddModelError(string.Empty, "Login not allowed.");
+                        _logger.LogInformation("User logged in.");
+                        return LocalRedirect(returnUrl);
                     }
 
-                    return Page();
-                }
+                    if (result.RequiresTwoFactor)
+                    {
+                        return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                    }
 
-                ModelState.AddModelError(string.Empty, "Invalid login attempt.");
-                return Page();
+                    if (result.IsLockedOut)
+                    {
+                        _logger.LogWarning("User account locked out.");
+                        return RedirectToPage("./Lockout");
+                    }
+
+                    // Fallback for failed attempts that didn't throw an exception
+                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                }
+                catch (Exception ex)
+                {
+                    // Log the actual technical horror for your eyes only
+                    _logger.LogError(ex, "A database or network error occurred during login for {Email}", Input.Email);
+
+                    // Give the user a generic, non-scary message
+                    ModelState.AddModelError(string.Empty, "The login service is temporarily unavailable. Please try again in a few moments.");
+                }
             }
 
+            // If we got this far, something failed, redisplay form
             return Page();
         }
     }

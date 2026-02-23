@@ -46,7 +46,7 @@ namespace MyRoomService.Pages.Contracts
         public string OccupantName { get; set; } = string.Empty;
         public SelectList BuildingsList { get; set; } = default!;
         public string AvailableAddOnsJson { get; set; } = "[]";
-
+        public int SpacesAvailable { get; set; }
         #endregion
 
         #region HTTP GET Handlers
@@ -95,12 +95,18 @@ namespace MyRoomService.Pages.Contracts
 
         public async Task<JsonResult> OnGetUnitsAsync(Guid buildingId)
         {
+            var tenantId = _tenantService.GetTenantId();
+
             var units = await _context.Units
-                .Where(u => u.BuildingId == buildingId && u.TenantId == _tenantService.GetTenantId())
+                .Where(u => u.BuildingId == buildingId && u.TenantId == tenantId)
+                .Where(u => u.Contracts
+                    .Count(c => c.Status == ContractStatus.Active || c.Status == ContractStatus.Reserved) < u.MaxOccupancy)
                 .Select(u => new
                 {
                     value = u.Id,
-                    text = u.UnitNumber
+                    text = u.UnitNumber,
+                    spacesAvailable = u.MaxOccupancy - u.Contracts
+                        .Count(c => c.Status == ContractStatus.Active || c.Status == ContractStatus.Reserved)
                 })
                 .ToListAsync();
 

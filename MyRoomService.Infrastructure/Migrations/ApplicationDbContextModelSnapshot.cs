@@ -79,6 +79,29 @@ namespace MyRoomService.Infrastructure.Migrations
                         .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("AspNetRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "1a1c3b5d-8a5f-4a3b-9c2d-1e1f2a3b4c5d",
+                            ConcurrencyStamp = "1a1c3b5d-8a5f-4a3b-9c2d-1e1f2a3b4c5d",
+                            Name = "SystemAdmin",
+                            NormalizedName = "SYSTEMADMIN"
+                        },
+                        new
+                        {
+                            Id = "2b2d4c6e-9b6g-5b4c-0d3e-2f2g3b4c5d6e",
+                            ConcurrencyStamp = "2b2d4c6e-9b6g-5b4c-0d3e-2f2g3b4c5d6e",
+                            Name = "Landlord",
+                            NormalizedName = "LANDLORD"
+                        },
+                        new
+                        {
+                            Id = "3c3e5d7f-0c7h-6c5d-1e4f-3g3h4c5d6e7f",
+                            ConcurrencyStamp = "3c3e5d7f-0c7h-6c5d-1e4f-3g3h4c5d6e7f",
+                            Name = "Occupant",
+                            NormalizedName = "OCCUPANT"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -462,6 +485,9 @@ namespace MyRoomService.Infrastructure.Migrations
 
                     b.Property<string>("FirstName")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("IdentityUserId")
                         .HasColumnType("text");
 
                     b.Property<string>("KycStatus")

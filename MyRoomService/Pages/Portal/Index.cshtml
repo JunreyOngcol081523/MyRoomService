@@ -1,0 +1,25 @@
+﻿@page
+@model MyRoomService.Pages.Portal.IndexModel
+@{
+    ViewData["Title"] = "My Dashboard";
+}
+
+<div class="text-center">
+    <h1 class="display-6">Welcome back!</h1>
+    <p class="lead">View your current active contracts and recent statements below.</p>
+</div>
+
+<hr />
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card border-primary mb-3">
+            <div class="card-header bg-primary text-white">Current Balance</div>
+            <div class="card-body">
+                <h4 class="card-title text-danger">₱ 0.00</h4>
+                <p class="card-text">You have no pending invoices.</p>
+                <a asp-page="/Portal/MyInvoices" class="btn btn-outline-primary btn-sm">View History</a>
+            </div>
+        </div>
+    </div>
+</div>
