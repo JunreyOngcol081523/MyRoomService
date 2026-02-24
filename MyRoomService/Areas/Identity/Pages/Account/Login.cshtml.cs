@@ -14,15 +14,12 @@ namespace MyRoomService.Areas.Identity.Pages.Account
     public class LoginModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<ApplicationUser> signInManager,
-                          ILogger<LoginModel> logger,
-                          UserManager<ApplicationUser> userManager)
+        // Note: I removed UserManager from the constructor since we don't need it to check roles here anymore!
+        public LoginModel(SignInManager<ApplicationUser> signInManager, ILogger<LoginModel> logger)
         {
             _signInManager = signInManager;
-            _userManager = userManager;
             _logger = logger;
         }
 
@@ -85,25 +82,7 @@ namespace MyRoomService.Areas.Identity.Pages.Account
                     if (result.Succeeded)
                     {
                         _logger.LogInformation("User logged in.");
-
-                        // --- SMART ROUTING LOGIC ---
-                        var user = await _userManager.FindByEmailAsync(Input.Email);
-                        if (user != null)
-                        {
-                            var roles = await _userManager.GetRolesAsync(user);
-
-                            if (roles.Contains("Occupant"))
-                            {
-                                return LocalRedirect("~/Portal/Index");
-                            }
-
-                            if (roles.Contains("Landlord") || roles.Contains("SystemAdmin"))
-                            {
-                                return LocalRedirect("~/Index");
-                            }
-                        }
-
-                        // Fallback if they somehow have no role
+                        // Standard redirect. Roles are no longer checked here!
                         return LocalRedirect(returnUrl);
                     }
 
