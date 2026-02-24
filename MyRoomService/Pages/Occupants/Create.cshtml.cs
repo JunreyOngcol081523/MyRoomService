@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services; // <-- Required for IEmailSender
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MyRoomService.Domain.Entities;
@@ -11,15 +12,18 @@ namespace MyRoomService.Pages.Occupants
         private readonly MyRoomService.Infrastructure.Persistence.ApplicationDbContext _context;
         private readonly ITenantService _tenantService;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmailSender _emailSender; // <-- Added Email Sender
 
         public CreateModel(
             MyRoomService.Infrastructure.Persistence.ApplicationDbContext context,
             ITenantService tenantService,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IEmailSender emailSender) // <-- Injected here
         {
             _context = context;
             _tenantService = tenantService;
             _userManager = userManager;
+            _emailSender = emailSender;
         }
 
         [BindProperty]
@@ -27,10 +31,9 @@ namespace MyRoomService.Pages.Occupants
 
         public IActionResult OnGet()
         {
-            // Initialize with default values
             Occupant = new Occupant
             {
-                KycStatus = KycStatus.Pending // Ensure it starts as Pending
+                KycStatus = KycStatus.Pending
             };
             return Page();
         }
@@ -42,46 +45,86 @@ namespace MyRoomService.Pages.Occupants
                 return Page();
             }
 
-            // 1. Generate a secure, random password for the new tenant
-            string tempPassword = GenerateRandomPassword();
+            using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // 2. Create the Identity User for the Portal (Removed FirstName/LastName)
-            var newUser = new ApplicationUser
+            try
             {
-                UserName = Occupant.Email, // Using Email as the login username
-                Email = Occupant.Email,
-                EmailConfirmed = true      // Pre-confirming since the Admin created it
-            };
+                // 1. Generate the plain-text password
+                string tempPassword = GenerateRandomPassword();
 
-            var result = await _userManager.CreateAsync(newUser, tempPassword);
+                // 2. Create the Identity User
+                var newUser = new ApplicationUser
+                {
+                    UserName = Occupant.Email,
+                    Email = Occupant.Email,
+                    EmailConfirmed = true,
+                    TenantId = _tenantService.GetTenantId()
+                };
 
-            if (result.Succeeded)
-            {
-                // 3. Set the ownership and unique identifiers
-                Occupant.TenantId = _tenantService.GetTenantId();
-                Occupant.Id = Guid.NewGuid();
-                Occupant.IdentityUserId = newUser.Id; // Link the newly generated login account
+                // Identity automatically hashes tempPassword during this call
+                var result = await _userManager.CreateAsync(newUser, tempPassword);
 
-                // 4. Save the actual Occupant record
-                _context.Occupants.Add(Occupant);
-                await _context.SaveChangesAsync();
+                if (result.Succeeded)
+                {
+                    // 3. Assign Role & Link Domain Entity
+                    await _userManager.AddToRoleAsync(newUser, "Occupant");
 
-                // 5. Pass the generated credentials to the Index page so you can give them to the tenant
-                TempData["SuccessMessage"] = $"Occupant created! Username: {Occupant.Email} | Temporary Password: {tempPassword}";
+                    Occupant.TenantId = _tenantService.GetTenantId();
+                    Occupant.Id = Guid.NewGuid();
+                    Occupant.IdentityUserId = newUser.Id;
 
-                return RedirectToPage("./Index");
+                    _context.Occupants.Add(Occupant);
+                    await _context.SaveChangesAsync();
+
+                    // 4. COMMIT TO DATABASE FIRST
+                    await transaction.CommitAsync();
+
+                    // 5. SEND THE WELCOME EMAIL WITH THE PLAIN-TEXT PASSWORD
+                    var loginUrl = Url.Page("/Account/Login", pageHandler: null, values: new { area = "Identity" }, protocol: Request.Scheme);
+
+                    await _emailSender.SendEmailAsync(
+                        Occupant.Email,
+                        "Welcome to RentFlow Tenant Portal - Login Credentials",
+                        $@"
+                        <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:30px;background:#f9f9f9;border-radius:10px;'>
+                            <div style='background:#ffffff;padding:30px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.08);'>
+                                <h2 style='color:#0d6efd;margin-top:0;'>Welcome, {Occupant.FirstName}!</h2>
+                                <p style='color:#555;font-size:15px;'>Your property manager has created a tenant portal account for you.</p>
+                                
+                                <div style='background:#f1f6fe;padding:15px;border-left:4px solid #0d6efd;margin:20px 0;'>
+                                    <p style='margin:0 0 10px 0;'><strong>Your Login Credentials:</strong></p>
+                                    <p style='margin:0 0 5px 0;'><strong>Username:</strong> {Occupant.Email}</p>
+                                    <p style='margin:0;'><strong>Password:</strong> <span style='font-family:monospace;font-size:16px;'>{tempPassword}</span></p>
+                                </div>
+
+                                <p style='color:#d9534f;font-size:14px;'><em>For your security, please log in and change this temporary password immediately.</em></p>
+
+                                <div style='text-align:center;margin:30px 0;'>
+                                    <a href='{loginUrl}' style='display:inline-block;background:#0d6efd;color:#ffffff;padding:12px 25px;text-decoration:none;border-radius:6px;font-weight:bold;'>Go to Login Portal</a>
+                                </div>
+                            </div>
+                        </div>"
+                    );
+
+                    // Optional: Still pass it to the UI just in case the landlord wants to copy it manually or the email bounces.
+                    TempData["SuccessMessage"] = $"Occupant created! Welcome email sent. (Temp Password: {tempPassword})";
+                    return RedirectToPage("./Index");
+                }
+
+                foreach (var error in result.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error.Description);
+                }
             }
-
-            // If Identity creation fails (e.g., email already exists)
-            foreach (var error in result.Errors)
+            catch (Exception)
             {
-                ModelState.AddModelError(string.Empty, error.Description);
+                await transaction.RollbackAsync();
+                ModelState.AddModelError(string.Empty, "An error occurred while creating the account.");
             }
 
             return Page();
         }
 
-        // --- Helper Method for Secure Password Generation ---
         private string GenerateRandomPassword()
         {
             var options = _userManager.Options.Password;
@@ -95,20 +138,17 @@ namespace MyRoomService.Pages.Occupants
             var random = new Random();
             string password = "";
 
-            // Guarantee one of each required character
             if (options.RequireLowercase) password += lower[random.Next(lower.Length)];
             if (options.RequireUppercase) password += upper[random.Next(upper.Length)];
             if (options.RequireDigit) password += number[random.Next(number.Length)];
             if (options.RequireNonAlphanumeric) password += special[random.Next(special.Length)];
 
-            // Fill the rest
             string allChars = lower + upper + number + special;
             while (password.Length < length)
             {
                 password += allChars[random.Next(allChars.Length)];
             }
 
-            // Shuffle the characters so the guaranteed ones aren't always first
             return new string(password.OrderBy(x => random.Next()).ToArray());
         }
     }
