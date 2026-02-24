@@ -14,12 +14,15 @@ namespace MyRoomService.Areas.Identity.Pages.Account
     public class LoginModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<LoginModel> _logger;
 
-        // Note: I removed UserManager from the constructor since we don't need it to check roles here anymore!
-        public LoginModel(SignInManager<ApplicationUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<ApplicationUser> signInManager,
+                          UserManager<ApplicationUser> userManager,
+                          ILogger<LoginModel> logger)
         {
             _signInManager = signInManager;
+            _userManager = userManager;
             _logger = logger;
         }
 
@@ -81,8 +84,26 @@ namespace MyRoomService.Areas.Identity.Pages.Account
 
                     if (result.Succeeded)
                     {
+                        // 1. Fetch the user who just successfully provided a password
+                        var user = await _userManager.FindByEmailAsync(Input.Email);
+                        var roles = await _userManager.GetRolesAsync(user);
+
+                        // 2. Strict Gatekeeper: Are they a Landlord or Admin?
+                        // 2. Strict Gatekeeper: Are they a Landlord or Admin?
+                        if (!roles.Contains("Landlord") && !roles.Contains("SystemAdmin"))
+                        {
+                            // 3. Immediately revoke the login session
+                            await _signInManager.SignOutAsync();
+                            _logger.LogWarning("Unauthorized access attempt. Occupant {Email} tried to log into the Admin portal.", Input.Email);
+
+                            // 4. Use ErrorMessage (TempData) instead of ModelState so it survives a redirect
+                            ErrorMessage = "Access denied. This portal is strictly for Property Managers. Please log in through the Tenant Portal.";
+
+                            // 5. REDIRECT to force a completely clean, logged-out page render
+                            return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
+                        }
+
                         _logger.LogInformation("User logged in.");
-                        // Standard redirect. Roles are no longer checked here!
                         return LocalRedirect(returnUrl);
                     }
 
@@ -106,7 +127,6 @@ namespace MyRoomService.Areas.Identity.Pages.Account
                 }
             }
 
-            // If we got this far, something failed, redisplay form
             return Page();
         }
     }

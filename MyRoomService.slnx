@@ -3,4 +3,5 @@
   <Project Path="MyRoomService.Domain/MyRoomService.Domain.csproj" />
   <Project Path="MyRoomService.Infrastructure/MyRoomService.Infrastructure.csproj" />
   <Project Path="MyRoomService/MyRoomService.csproj" />
+  <Project Path="RentFlow.Portal/RentFlow.Portal.csproj" Id="5bcb44cb-cb3b-4d40-84c1-321604d7ab31" />
 </Solution>
