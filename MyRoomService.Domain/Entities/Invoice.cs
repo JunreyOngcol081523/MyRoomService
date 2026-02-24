@@ -24,6 +24,7 @@ namespace MyRoomService.Domain.Entities
 
         // Optional but helpful: A calculated property for what is still owed
         public decimal BalanceDue => TotalAmount - AmountPaid;
+        public bool IsPublished { get; set; } = false;
         public string Status { get; set; } = "UNPAID"; // UNPAID, PAID, PARTIAL, OVERDUE, VOID
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

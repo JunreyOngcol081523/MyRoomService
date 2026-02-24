@@ -3,71 +3,56 @@
 @{
     ViewData["Title"] = "Invoice Details";
 }
+
+@* --- RECORD PAYMENT MODAL --- *@
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
-
             <form method="post" asp-page-handler="RecordPayment" asp-route-id="@Model.Invoice.Id">
-
                 <div class="modal-header border-bottom-0 pb-0">
                     <h5 class="modal-title fw-bold text-success" id="paymentModalLabel">
                         <i class="bi bi-wallet2 me-2"></i> Record Payment
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-
                 <div class="modal-body py-4">
                     <div class="d-flex justify-content-between mb-3 text-muted">
                         <span>Total Invoice:</span>
                         <span class="fw-bold text-dark">₱@Model.Invoice.TotalAmount.ToString("N2")</span>
                     </div>
-                    <div class="d-flex justify-content-between mb-4 text-muted">
-                        <span>Already Paid:</span>
-                        <span class="fw-bold text-dark">₱@Model.Invoice.AmountPaid.ToString("N2")</span>
-                    </div>
-
                     <div class="alert alert-info border-0 rounded-3">
                         <div class="d-flex justify-content-between align-items-center mb-0">
                             <strong>Remaining Balance:</strong>
-                            <strong class="fs-5 text-primary">₱@((Model.Invoice.TotalAmount - Model.Invoice.AmountPaid).ToString("N2"))</strong>
+                            <strong class="fs-5 text-primary">₱@Model.Invoice.BalanceDue.ToString("N2")</strong>
                         </div>
                     </div>
-
                     <div class="form-group mt-4">
                         <label class="form-label fw-bold">Payment Amount Received (₱)</label>
-                        <input type="number" step="0.01" max="@(Model.Invoice.TotalAmount - Model.Invoice.AmountPaid)"
+                        <input type="number" step="0.01" max="@Model.Invoice.BalanceDue"
                                class="form-control form-control-lg" asp-for="PaymentAmount"
-                               value="@(Model.Invoice.TotalAmount - Model.Invoice.AmountPaid)" required />
-                        <div class="form-text mt-2">
-                            Defaults to the full remaining balance. Change this for partial payments.
-                        </div>
+                               value="@Model.Invoice.BalanceDue" required />
                     </div>
                 </div>
-
                 <div class="modal-footer border-top-0 pt-0">
                     <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success rounded-pill px-4 shadow-sm">
-                        Confirm Payment
-                    </button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4 shadow-sm">Confirm Payment</button>
                 </div>
-
             </form>
-
         </div>
     </div>
 </div>
+
+@* --- ADJUSTMENT MODAL --- *@
 <div class="modal fade" id="adjustmentModal" tabindex="-1" aria-labelledby="adjustmentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-light">
+            <div class="modal-header bg-light border-0">
                 <h5 class="modal-title fw-bold" id="adjustmentModalLabel">Add Adjustment</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-
             <form method="post" asp-page-handler="AddAdjustment">
                 <div class="modal-body p-4">
                     <input type="hidden" asp-for="Adjustment.InvoiceId" value="@Model.Invoice.Id" />
-
                     <div class="mb-3">
                         <label class="form-label fw-bold text-muted small">Adjustment Type</label>
                         <select class="form-select" asp-for="Adjustment.Type" required>
@@ -76,119 +61,230 @@
                             <option value="Penalty">Penalty (Additional Charge)</option>
                         </select>
                     </div>
-
                     <div class="mb-3">
                         <label class="form-label fw-bold text-muted small">Description</label>
                         <input type="text" class="form-control" asp-for="Adjustment.Description" placeholder="e.g., Clean Room Reward, Late Fee" required />
                     </div>
-
                     <div class="mb-3">
                         <label class="form-label fw-bold text-muted small">Amount</label>
                         <div class="input-group">
                             <span class="input-group-text">₱</span>
                             <input type="number" step="0.01" min="0.01" class="form-control" asp-for="Adjustment.Amount" placeholder="0.00" required />
                         </div>
-                        <div class="form-text">Always enter a positive number. The system will handle deductions automatically.</div>
                     </div>
                 </div>
-
-                <div class="modal-footer bg-light border-0">
+                <div class="modal-footer bg-light border-0 pt-0">
                     <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4">Apply Adjustment</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm">Apply Adjustment</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <a asp-page="./Index" class="btn btn-outline-secondary rounded-pill">
+
+<div class="container py-4 px-lg-5">
+    @* --- Action Header --- *@
+    <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <a asp-page="./Index" class="btn btn-outline-secondary rounded-pill border shadow-sm">
             <i class="bi bi-arrow-left me-1"></i> Back to Invoices
         </a>
-        @if (Model.Invoice.Status != "PAID")
-        {
-            <button type="button" class="btn btn-success shadow-sm rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#paymentModal">
-                <i class="bi bi-cash-coin me-2"></i> Record Payment
-            </button>
-        }
-        <div>
-            @if (Model.Invoice.Status == "UNPAID")
+
+        <div class="d-flex gap-2">
+            @* --- VOID LOGIC --- *@
+            @if (Model.Invoice.Status != "PAID" && Model.Invoice.Status != "VOID")
             {
-                <button type="button" class="btn btn-outline-primary rounded-pill border shadow-sm me-2" data-bs-toggle="modal" data-bs-target="#adjustmentModal">
-                    <i class="bi bi-plus-circle me-1"></i> Add Adjustment
+                <form method="post" asp-page-handler="Void" asp-route-id="@Model.Invoice.Id" onsubmit="return confirm('Are you sure you want to VOID this invoice? This will hide it from the portal and cancel the billing.');">
+                    <button type="submit" class="btn btn-outline-danger rounded-pill border shadow-sm">
+                        <i class="bi bi-slash-circle me-1"></i> Void Invoice
+                    </button>
+                </form>
+            }
+
+            @* --- PUBLISH LOGIC --- *@
+            @if (!Model.Invoice.IsPublished && Model.Invoice.Status != "VOID")
+            {
+                <form method="post" asp-page-handler="Publish" asp-route-id="@Model.Invoice.Id">
+                    <button type="submit" class="btn btn-primary rounded-pill shadow-sm px-4 fw-bold">
+                        <i class="bi bi-send-fill me-2"></i> Publish
+                    </button>
+                </form>
+            }
+            else if (Model.Invoice.IsPublished)
+            {
+                <button class="btn btn-outline-success rounded-pill border shadow-sm" disabled>
+                    <i class="bi bi-check-all me-1"></i> Published
                 </button>
             }
 
-            <button class="btn btn-light rounded-pill border shadow-sm me-2" onclick="window.print()">
-                <i class="bi bi-printer me-1"></i> Print
-            </button>
-            @if (Model.Invoice.Status == "UNPAID")
+            @* --- ADJUSTMENT & PAYMENT LOGIC --- *@
+            @if (Model.Invoice.Status != "PAID" && Model.Invoice.Status != "VOID")
             {
-                <button class="btn btn-success rounded-pill shadow-sm">
-                    <i class="bi bi-check-circle me-1"></i> Mark as Paid
+                <div class="vr mx-2"></div>
+                <button type="button" class="btn btn-outline-primary rounded-pill border shadow-sm" data-bs-toggle="modal" data-bs-target="#adjustmentModal">
+                    <i class="bi bi-plus-circle me-1"></i> Add Adjustment
+                </button>
+                <button type="button" class="btn btn-success shadow-sm rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#paymentModal">
+                    <i class="bi bi-cash-coin me-2"></i> Record Payment
                 </button>
             }
+
+            <button class="btn btn-light rounded-pill border shadow-sm" onclick="window.print()">
+                <i class="bi bi-printer me-1"></i> Print
+            </button>
         </div>
     </div>
 
-    <div class="card border-0 shadow-lg rounded-4 overflow-hidden">
+    @* --- Invoice Document Card --- *@
+    <div class="card border-0 shadow-lg rounded-4 overflow-hidden invoice-card">
         <div class="bg-primary p-3"></div>
 
-        <div class="card-body p-5">
+        <div class="card-body p-lg-5">
             <div class="row mb-5">
                 <div class="col-sm-6">
                     <h2 class="fw-bold text-dark mb-1">INVOICE</h2>
                     <p class="text-muted mb-0">#@Model.Invoice.Id.ToString().Substring(0, 8).ToUpper()</p>
-                    <span class="badge @(Model.Invoice.Status == "PAID" ? "bg-success" : "bg-warning text-dark") mt-2 fs-6">
+                    <span class="badge @(Model.Invoice.Status == "PAID" ? "bg-success" : (Model.Invoice.Status == "VOID" ? "bg-danger" : "bg-warning text-dark")) mt-2 fs-6 px-3 rounded-pill">
                         @Model.Invoice.Status
                     </span>
+                    @if (!Model.Invoice.IsPublished && Model.Invoice.Status != "VOID")
+                    {
+                        <span class="badge bg-secondary ms-2 rounded-pill small">DRAFT</span>
+                    }
                 </div>
                 <div class="col-sm-6 text-sm-end mt-4 mt-sm-0">
-                    <h6 class="fw-bold text-muted mb-1">Billed To:</h6>
+                    <h6 class="fw-bold text-muted mb-1 text-uppercase small">Billed To:</h6>
                     <h5 class="fw-bold mb-1">@Model.Invoice.Occupant?.FullName</h5>
                     <p class="text-muted mb-0">Unit: @Model.Invoice.Contract?.Unit?.UnitNumber</p>
                     <div class="mt-3">
-                        <p class="mb-1"><span class="text-muted me-2">Invoice Date:</span> @Model.Invoice.InvoiceDate.ToString("MMM dd, yyyy")</p>
-                        <p class="mb-0"><span class="text-muted me-2">Due Date:</span> <span class="fw-bold text-danger">@Model.Invoice.DueDate.ToString("MMM dd, yyyy")</span></p>
+                        <p class="mb-1"><span class="text-muted me-2">Date:</span> @Model.Invoice.InvoiceDate.ToString("MMM dd, yyyy")</p>
+                        <p class="mb-0"><span class="text-muted me-2">Due:</span> <span class="fw-bold text-danger">@Model.Invoice.DueDate.ToString("MMM dd, yyyy")</span></p>
                     </div>
                 </div>
             </div>
 
-            <div class="table-responsive mb-4">
-                <table class="table table-borderless table-sm text-end mb-0">
-                    <tr>
-                        <td class="text-muted pb-2">Total Invoice Amount:</td>
-                        <td class="fw-bold pb-2">₱@Model.Invoice.TotalAmount.ToString("N2")</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted pb-2">Amount Paid:</td>
-                        <td class="fw-bold text-success pb-2">
-                            <i class="bi bi-dash-circle me-1 small"></i> ₱@Model.Invoice.AmountPaid.ToString("N2")
-                        </td>
-                    </tr>
-                    <tr class="border-top border-2">
-                        <td class="text-dark fw-bold fs-5 pt-2">Balance Due:</td>
-                        <td class="fw-bold fs-5 text-primary pt-2">₱@Model.Invoice.BalanceDue.ToString("N2")</td>
-                    </tr>
+            @* --- Line Items Table --- *@
+            <div class="table-responsive mb-5">
+                <table class="table align-middle">
+                    <thead class="table-light">
+                        <tr class="text-muted small text-uppercase fw-bold">
+                            <th class="ps-3">Description</th>
+                            <th class="text-center">Type</th>
+                            <th class="text-end pe-3">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Invoice.Items)
+                        {
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="fw-bold text-dark">@item.Description</div>
+                                </td>
+                                <td class="text-center">
+                                    @if (item.ItemType == "DISCOUNT")
+                                    {
+                                        <span class="badge bg-success-soft text-success rounded-pill small">Reward</span>
+                                    }
+                                    else if (item.ItemType == "PENALTY")
+                                    {
+                                        <span class="badge bg-danger-soft text-danger rounded-pill small">Penalty</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-muted rounded-pill small">Service</span>
+                                    }
+                                </td>
+                                <td class="text-end pe-3 @(item.Amount < 0 ? "text-success" : "text-dark") fw-bold">
+                                    @(item.Amount < 0 ? "-" : "")₱@Math.Abs(item.Amount).ToString("N2")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
                 </table>
             </div>
 
+            @* --- Totals Section --- *@
+            <div class="row justify-content-end">
+                <div class="col-lg-4 col-md-6">
+                    <table class="table table-borderless table-sm text-end mb-0">
+                        <tr>
+                            <td class="text-muted pb-2">Subtotal:</td>
+                            <td class="fw-bold pb-2">₱@Model.Invoice.TotalAmount.ToString("N2")</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted pb-2">Amount Paid:</td>
+                            <td class="fw-bold text-success pb-2">
+                                <i class="bi bi-dash-circle me-1 small"></i> ₱@Model.Invoice.AmountPaid.ToString("N2")
+                            </td>
+                        </tr>
+                        <tr class="border-top border-2">
+                            <td class="text-dark fw-bold fs-5 pt-2">Balance Due:</td>
+                            <td class="fw-bold fs-5 text-primary pt-2">₱@Model.Invoice.BalanceDue.ToString("N2")</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            @* --- Visual Stamps --- *@
+            <div class="mt-5 text-center">
+                @if (Model.Invoice.Status == "PAID")
+                {
+                    <div class="stamp stamp-paid">PAID</div>
+                }
+                else if (Model.Invoice.Status == "VOID")
+                {
+                    <div class="stamp stamp-void">VOIDED</div>
+                }
+            </div>
         </div>
     </div>
 </div>
 
 <style>
-    /* Hides buttons and extra UI when the user clicks Print */
+    /* Custom Badges */
+    .bg-success-soft {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .bg-danger-soft {
+        background-color: #ffebee;
+        color: #c62828;
+    }
+
+    /* Stamps UI */
+    .stamp {
+        display: inline-block;
+        padding: 10px 40px;
+        border-radius: 15px;
+        font-size: 3rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        border: 8px solid;
+        opacity: 0.25;
+        transform: rotate(-15deg);
+    }
+
+    .stamp-paid {
+        color: #198754;
+        border-color: #198754;
+    }
+
+    .stamp-void {
+        color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    /* Print Controls */
     @@media print {
         body * {
             visibility: hidden;
         }
 
-        .card, .card * {
+        .invoice-card, .invoice-card * {
             visibility: visible;
         }
 
-        .card {
+        .invoice-card {
             position: absolute;
             left: 0;
             top: 0;
@@ -196,7 +292,7 @@
             box-shadow: none !important;
         }
 
-        .btn, .d-flex a {
+        .no-print {
             display: none !important;
         }
     }

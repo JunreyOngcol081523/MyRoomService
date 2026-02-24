@@ -38,7 +38,7 @@ namespace MyRoomService.Pages.Invoices
         [BindProperty(SupportsGet = true)] public string? StatusFilter { get; set; }
         [BindProperty(SupportsGet = true)] public DateTime? StartDate { get; set; }
         [BindProperty(SupportsGet = true)] public DateTime? EndDate { get; set; }
-
+        [BindProperty] public bool AutoPublish { get; set; }
         // --- PAGINATION PROPERTIES ---
         [BindProperty(SupportsGet = true)] public int PageIndex { get; set; } = 1;
         [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 10;
@@ -136,7 +136,7 @@ namespace MyRoomService.Pages.Invoices
             var tenantId = _tenantService.GetTenantId();
 
             // Run the engine for TODAY's date
-            int count = await _invoiceService.GenerateMonthlyInvoicesAsync(tenantId, DateTime.UtcNow);
+            int count = await _invoiceService.GenerateMonthlyInvoicesAsync(tenantId, DateTime.Now, AutoPublish);
 
             if (count > 0)
             {
@@ -148,6 +148,34 @@ namespace MyRoomService.Pages.Invoices
             }
 
             return RedirectToPage("./Index");
+        }
+        public async Task<IActionResult> OnPostPublishAllAsync()
+        {
+            var tenantId = _tenantService.GetTenantId();
+
+            // Find all invoices for this tenant that are currently Drafts AND Unpaid
+            var draftInvoices = await _context.Invoices
+                .Where(i => i.TenantId == tenantId && !i.IsPublished && i.Status == "UNPAID")
+                .ToListAsync();
+
+            if (draftInvoices.Any())
+            {
+                int count = draftInvoices.Count;
+
+                foreach (var invoice in draftInvoices)
+                {
+                    invoice.IsPublished = true;
+                }
+
+                await _context.SaveChangesAsync();
+                StatusMessage = $"Success! {count} draft invoice(s) have been published and are now visible to occupants.";
+            }
+            else
+            {
+                StatusMessage = "No draft, unpaid invoices were found to publish.";
+            }
+
+            return RedirectToPage();
         }
     }
 }

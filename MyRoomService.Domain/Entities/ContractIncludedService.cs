@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MyRoomService.Domain.Entities
 {
@@ -11,11 +8,13 @@ namespace MyRoomService.Domain.Entities
         public Guid TenantId { get; set; }
 
         public Guid ContractId { get; set; }
-        public Contract? Contract { get; set; }
+        public virtual Contract? Contract { get; set; }
 
-        public string Name { get; set; } = string.Empty;
+        public Guid UnitServiceId { get; set; }  // ✅ Direct link
+        public virtual UnitService? UnitService { get; set; }  // ✅ Navigation
 
+        // Optional: Allow contract-specific pricing override
         [Column(TypeName = "decimal(10, 2)")]
-        public decimal Amount { get; set; }
+        public decimal? OverrideAmount { get; set; }
     }
 }

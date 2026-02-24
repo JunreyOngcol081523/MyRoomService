@@ -106,7 +106,7 @@
     </div>
 </div>
 
-@* --- UNIT SERVICE MODAL --- *@
+@* --- UPDATED UNIT SERVICE MODAL --- *@
 <div class="modal fade" id="serviceModal" tabindex="-1" aria-labelledby="serviceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -117,13 +117,33 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label fw-semibold text-muted small text-uppercase">Service Name</label>
-                    <input type="text" id="modalServiceName" class="form-control border-secondary" placeholder="e.g. High-Speed Wi-Fi" />
-                    <div class="form-text small">Enter the name of the service tied to this unit.</div>
+                    <input type="text" id="modalServiceName" class="form-control border-secondary" placeholder="e.g. Electricity, Water, or LPG" />
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-semibold text-primary small text-uppercase">Monthly Price ($)</label>
+                    <label class="form-label fw-semibold text-muted small text-uppercase d-block">Billing Type</label>
+                    <div class="btn-group w-100" role="group" aria-label="Billing Type">
+                        <input type="radio" class="btn-check" name="billingType" id="typeFixed" value="false" checked autocomplete="off">
+                        <label class="btn btn-outline-primary" for="typeFixed">
+                            <i class="bi bi-calendar-check me-1"></i> Fixed Fee
+                        </label>
+
+                        <input type="radio" class="btn-check" name="billingType" id="typeMetered" value="true" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="typeMetered">
+                            <i class="bi bi-speedometer2 me-1"></i> Metered
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label id="priceLabel" class="form-label fw-semibold text-primary small text-uppercase">Monthly Price ($)</label>
                     <input type="number" id="modalMonthlyPrice" step="0.01" class="form-control border-primary shadow-sm fw-bold" placeholder="0.00" />
+                    <div id="priceHelp" class="form-text small text-info">Flat amount charged every month.</div>
+                </div>
+
+                <div id="meterNumberSection" class="mb-3 d-none">
+                    <label class="form-label fw-semibold text-muted small text-uppercase">Meter Serial Number</label>
+                    <input type="text" id="modalMeterNumber" class="form-control border-secondary" placeholder="e.g. SN-12345" />
                 </div>
             </div>
             <div class="modal-footer border-top-0 pt-0">
@@ -143,23 +163,47 @@
         $(document).ready(function () {
             let serviceIndex = 0;
 
+            // --- NEW: UI Toggle Logic for the Modal ---
+            $('input[name="billingType"]').change(function() {
+                if ($('#typeMetered').is(':checked')) {
+                    $('#priceLabel').text("Rate per Unit ($)");
+                    $('#priceHelp').text("The cost per kWh, Cubic Meter, etc.");
+                    $('#meterNumberSection').removeClass('d-none');
+                } else {
+                    $('#priceLabel').text("Monthly Price ($)");
+                    $('#priceHelp').text("Flat amount charged every month.");
+                    $('#meterNumberSection').addClass('d-none');
+                }
+            });
+
+            // --- Add Service Logic ---
             $('#btnAddServiceToList').click(function () {
                 const name = $('#modalServiceName').val().trim();
                 const price = parseFloat($('#modalMonthlyPrice').val());
+                const isMetered = $('#typeMetered').is(':checked');
+                const meterNumber = $('#modalMeterNumber').val().trim();
 
                 if (!name || isNaN(price)) {
-                    alert("Please provide a valid service name and monthly price.");
+                    alert("Please provide a valid service name and price/rate.");
                     return;
                 }
 
                 $('#emptyStateRow').hide();
 
-                // Generate new row HTML with hidden inputs mapping to the code-behind model
+                // Status badges for the table view
+                const typeBadge = isMetered
+                    ? '<span class="badge bg-info-soft text-info"><i class="bi bi-speedometer2"></i> Metered</span>'
+                    : '<span class="badge bg-light text-muted">Fixed</span>';
+
+                // Generate row with hidden inputs mapping to UnitService properties
                 const tr = $(`
                     <tr>
                         <td class="fw-bold text-dark">
-                            ${name}
+                            ${name} ${typeBadge}
+                            <div class="small text-muted">${isMetered ? 'Meter: ' + (meterNumber || 'N/A') : ''}</div>
                             <input type="hidden" name="SelectedServices[${serviceIndex}].Name" value="${name}" />
+                            <input type="hidden" name="SelectedServices[${serviceIndex}].IsMetered" value="${isMetered}" />
+                            <input type="hidden" name="SelectedServices[${serviceIndex}].MeterNumber" value="${meterNumber}" />
                         </td>
                         <td class="text-end fw-bold text-primary">
                             $${price.toFixed(2)}
@@ -179,6 +223,8 @@
                 // Reset modal fields
                 $('#modalServiceName').val('');
                 $('#modalMonthlyPrice').val('');
+                $('#modalMeterNumber').val('');
+                $('#typeFixed').prop('checked', true).trigger('change');
 
                 var modal = bootstrap.Modal.getInstance(document.getElementById('serviceModal'));
                 modal.hide();
@@ -188,19 +234,18 @@
 
             $('#servicesTable').on('click', '.remove-service', function () {
                 $(this).closest('tr').remove();
-
                 if ($('#servicesTable tbody tr').not('#emptyStateRow').length === 0) {
                     $('#emptyStateRow').show();
                 }
-
                 reindexServices();
             });
 
-            // Ensures arrays are perfectly sequential (0, 1, 2) for C# binding
             function reindexServices() {
                 $('#servicesTable tbody tr').not('#emptyStateRow').each(function(index) {
                     $(this).find('input[name*="Name"]').attr('name', `SelectedServices[${index}].Name`);
                     $(this).find('input[name*="MonthlyPrice"]').attr('name', `SelectedServices[${index}].MonthlyPrice`);
+                    $(this).find('input[name*="IsMetered"]').attr('name', `SelectedServices[${index}].IsMetered`);
+                    $(this).find('input[name*="MeterNumber"]').attr('name', `SelectedServices[${index}].MeterNumber`);
                 });
                 serviceIndex = $('#servicesTable tbody tr').not('#emptyStateRow').length;
             }

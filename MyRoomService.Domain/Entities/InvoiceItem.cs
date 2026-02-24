@@ -16,5 +16,11 @@ namespace MyRoomService.Domain.Entities
 
         // RENT, ADD_ON, UTILITY, PENALTY, DISCOUNT
         public string ItemType { get; set; } = "RENT";
+        public Guid? ContractAddOnId { get; set; }
+        public ContractAddOn? ContractAddOn { get; set; }
+
+        // Link to the specific Unit Service (Fixed or Metered) that generated this charge
+        public Guid? UnitServiceId { get; set; }
+        public UnitService? UnitService { get; set; }
     }
 }

@@ -14,5 +14,6 @@ namespace MyRoomService.Domain.Entities
 
         [Column(TypeName = "decimal(10, 2)")]
         public decimal AgreedAmount { get; set; } // Can override the default price
+        public bool IsProcessed { get; set; } = false;
     }
 }

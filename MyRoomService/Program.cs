@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
 using MyRoomService.Infrastructure.Persistence;
+using MyRoomService.Infrastructure.Services;
 using MyRoomService.Services;
-using MyRoomService.Web.Services;
+
 
 // Required for PostgreSQL timestamp compatibility
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);

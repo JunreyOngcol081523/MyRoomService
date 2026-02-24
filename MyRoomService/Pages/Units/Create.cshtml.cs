@@ -78,7 +78,9 @@ namespace MyRoomService.Pages.Units
                     {
                         TenantId = tenantId,
                         Name = service.Name,               // Now saving the custom text
-                        MonthlyPrice = service.MonthlyPrice // Now saving the custom price
+                        MonthlyPrice = service.MonthlyPrice, // Now saving the custom price
+                        IsMetered = service.IsMetered,  
+                        MeterNumber = service.IsMetered ? service.MeterNumber : null // Save meter number if metered
                     });
                 }
             }

@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MyRoomService.Domain.Entities;
+using MyRoomService.Domain.Interfaces;
 using MyRoomService.Infrastructure.Persistence;
+using MyRoomService.Infrastructure.Services;
 
 // 1. PostgreSQL Timestamp Compatibility
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -30,16 +32,14 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("RequireOccupant", policy => policy.RequireRole("Occupant"));
 });
 
-// 5. Global Folder Restrictions
-builder.Services.AddRazorPages(options =>
-{
-    // Force the entire website to require the "Occupant" role
-    options.Conventions.AuthorizeFolder("/", "RequireOccupant");
+// 1. Required for TenantService to access the current user's claims
+builder.Services.AddHttpContextAccessor();
 
-    // Allow anyone to access the Login/Logout/Register pages
-    options.Conventions.AllowAnonymousToAreaFolder("Identity", "/Account");
-});
-
+// 2. Register the TenantService implementation
+// Note: If you haven't moved TenantService to a shared project yet, 
+// you may need to add a reference or create a local implementation in the Portal project.
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, AdditionalUserClaimsPrincipalFactory>();
+builder.Services.AddScoped<ITenantService, TenantService>();
 var app = builder.Build();
 
 // 6. HTTP Request Pipeline

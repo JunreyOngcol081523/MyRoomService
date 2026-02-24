@@ -101,7 +101,9 @@ namespace MyRoomService.Pages.Units
                     {
                         TenantId = tenantId,
                         Name = service.Name,
-                        MonthlyPrice = service.MonthlyPrice
+                        MonthlyPrice = service.MonthlyPrice,
+                        IsMetered = service.IsMetered,
+                        MeterNumber = service.MeterNumber
                     });
                 }
             }

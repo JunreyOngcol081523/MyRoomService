@@ -16,7 +16,10 @@ namespace MyRoomService.Domain.Entities
         // Updated to (10, 2) to match your co-developer's SQL decimal precision
         [Column(TypeName = "decimal(10, 2)")]
         public decimal MonthlyPrice { get; set; }
+        public bool IsMetered { get; set; } = false;
 
+        // NEW: Optional field to track the physical meter serial number
+        public string? MeterNumber { get; set; }
         // Links this service to a specific Unit using Guid
         public Guid UnitId { get; set; }
         public Unit? Unit { get; set; }

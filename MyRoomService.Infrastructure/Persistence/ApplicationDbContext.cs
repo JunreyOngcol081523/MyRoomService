@@ -26,12 +26,14 @@ namespace MyRoomService.Infrastructure.Persistence
         public DbSet<ContractAddOn> ContractAddOns { get; set; }
         public DbSet<Invoice> Invoices { get; set; }
         public DbSet<InvoiceItem> InvoiceItems { get; set; }
+        public DbSet<MeterReading> MeterReadings { get; set; }
+        public DbSet<ContractIncludedService> ContractIncludedServices { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
-            // 1. Configure Decimal Precision
+            // 1. Configure Decimal Precision (Globally for all decimals)
             foreach (var property in builder.Model.GetEntityTypes()
                 .SelectMany(t => t.GetProperties())
                 .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
@@ -40,50 +42,126 @@ namespace MyRoomService.Infrastructure.Persistence
             }
 
             // 2. Ensure Postgres UUID types
-            builder.Entity<Building>().Property(b => b.TenantId).HasColumnType("uuid");
-            builder.Entity<Unit>().Property(u => u.TenantId).HasColumnType("uuid");
-            builder.Entity<Occupant>().Property(o => o.TenantId).HasColumnType("uuid");
-            builder.Entity<Contract>().Property(c => c.TenantId).HasColumnType("uuid");
-            builder.Entity<Invoice>().Property(i => i.TenantId).HasColumnType("uuid");
+            var uuidEntities = new[] { "Building", "Unit", "Occupant", "Contract", "Invoice", "MeterReading", "InvoiceItem", "ContractIncludedService" };
+            foreach (var entityName in uuidEntities)
+            {
+                var entity = builder.Model.FindEntityType($"MyRoomService.Domain.Entities.{entityName}");
+                if (entity != null)
+                {
+                    var tenantProp = entity.FindProperty("TenantId");
+                    if (tenantProp != null) tenantProp.SetColumnType("uuid");
+                }
+            }
 
-            // 3. FIX: Specific Relationship Mapping
+            // 3. Contract Configuration
+            builder.Entity<Contract>(entity =>
+            {
+                entity.Ignore("ContractId"); // Ignore any shadow property issues
 
-            // Standard relationships from your ERD
-            builder.Entity<Contract>().Ignore("ContractId");
-            builder.Entity<Contract>()
-                .HasOne(c => c.Unit)
-                .WithMany(u => u.Contracts)
-                .HasForeignKey(c => c.UnitId);
+                entity.HasOne(c => c.Unit)
+                    .WithMany(u => u.Contracts)
+                    .HasForeignKey(c => c.UnitId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<Contract>()
-                .HasOne(c => c.Occupant)
-                .WithMany(o => o.Contracts)
-                .HasForeignKey(c => c.OccupantId);
+                entity.HasOne(c => c.Occupant)
+                    .WithMany(o => o.Contracts)
+                    .HasForeignKey(c => c.OccupantId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
-            // Link Contract to AddOns (Based on ERD)
-            builder.Entity<ContractAddOn>()
-                .HasOne(a => a.Contract)
-                .WithMany(c => c.AddOns)
-                .HasForeignKey(a => a.ContractId);
-            // Link Contract to Invoices (Based on ERD)
-            builder.Entity<Invoice>()
-                .HasOne(i => i.Contract)
-                .WithMany(c => c.Invoices)
-                .HasForeignKey(i => i.ContractId);
+                entity.Property(c => c.Status)
+                    .HasConversion<int>();
+            });
 
-            // 4. Enum Conversions
-            builder.Entity<Building>().Property(b => b.BuildingType).HasConversion<string>();
-            builder.Entity<Occupant>().Property(o => o.KycStatus).HasConversion<string>();
+            // 4. ContractAddOn Configuration
+            builder.Entity<ContractAddOn>(entity =>
+            {
+                entity.HasOne(a => a.Contract)
+                    .WithMany(c => c.AddOns)
+                    .HasForeignKey(a => a.ContractId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
-            // Ensure Contract Status maps to Integer (matches your screenshot)
-            builder.Entity<Contract>()
-                .Property(c => c.Status)
-                .HasConversion<int>();
-            // Seed Default Roles
+                entity.HasOne(a => a.ChargeDefinition)
+                    .WithMany()
+                    .HasForeignKey(a => a.ChargeDefinitionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // 5. ContractIncludedService Configuration
+            // ContractIncludedService Configuration
+            builder.Entity<ContractIncludedService>(entity =>
+            {
+                entity.HasOne(cis => cis.Contract)
+                    .WithMany(c => c.IncludedServices)
+                    .HasForeignKey(cis => cis.ContractId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(cis => cis.UnitService)
+                    .WithMany()
+                    .HasForeignKey(cis => cis.UnitServiceId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // 6. Invoice Configuration
+            builder.Entity<Invoice>(entity =>
+            {
+                entity.HasOne(i => i.Contract)
+                    .WithMany(c => c.Invoices)
+                    .HasForeignKey(i => i.ContractId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(i => i.Occupant)
+                    .WithMany()
+                    .HasForeignKey(i => i.OccupantId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // 7. InvoiceItem Configuration
+            builder.Entity<InvoiceItem>(entity =>
+            {
+                // Link Item to Parent Invoice
+                entity.HasOne(d => d.Invoice)
+                    .WithMany(p => p.Items)
+                    .HasForeignKey(d => d.InvoiceId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Link Item to Contract AddOn (Optional Source)
+                entity.HasOne(d => d.ContractAddOn)
+                    .WithMany()
+                    .HasForeignKey(d => d.ContractAddOnId)
+                    .OnDelete(DeleteBehavior.SetNull)
+                    .IsRequired(false);
+
+                // Link Item to Unit Service (Optional Source)
+                entity.HasOne(d => d.UnitService)
+                    .WithMany()
+                    .HasForeignKey(d => d.UnitServiceId)
+                    .OnDelete(DeleteBehavior.SetNull)
+                    .IsRequired(false);
+            });
+
+            // 8. MeterReading Configuration
+            builder.Entity<MeterReading>(entity =>
+            {
+                entity.HasOne(m => m.UnitService)
+                    .WithMany()
+                    .HasForeignKey(m => m.UnitServiceId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // 9. Other Entity Configurations
+            builder.Entity<Building>()
+                .Property(b => b.BuildingType)
+                .HasConversion<string>();
+
+            builder.Entity<Occupant>()
+                .Property(o => o.KycStatus)
+                .HasConversion<string>();
+
+            // 10. Seed Default Roles
             builder.Entity<IdentityRole>().HasData(
                 new IdentityRole
                 {
-                    Id = "1a1c3b5d-8a5f-4a3b-9c2d-1e1f2a3b4c5d", // Use a static Guid for seeded data
+                    Id = "1a1c3b5d-8a5f-4a3b-9c2d-1e1f2a3b4c5d",
                     Name = "SystemAdmin",
                     NormalizedName = "SYSTEMADMIN",
                     ConcurrencyStamp = "1a1c3b5d-8a5f-4a3b-9c2d-1e1f2a3b4c5d"

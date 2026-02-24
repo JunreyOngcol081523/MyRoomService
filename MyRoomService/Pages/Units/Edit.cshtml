@@ -6,6 +6,7 @@
 }
 
 <div class="container-fluid py-4">
+    @* ... Header Section (Unchanged) ... *@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold mb-0">Edit Unit @Model.Unit.UnitNumber</h2>
@@ -20,6 +21,7 @@
         <input type="hidden" asp-for="Unit.TenantId" />
 
         <div class="row g-4">
+            @* --- Left Column: Unit Details (Unchanged) --- *@
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
@@ -64,6 +66,7 @@
                 </div>
             </div>
 
+            @* --- Right Column: Unit Services & Add-ons (Modified) --- *@
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-header bg-white border-bottom-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
@@ -78,11 +81,12 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Service Name</th>
-                                        <th class="text-end">Monthly Price</th>
+                                        <th class="text-end">Monthly Price/Rate</th>
                                         <th class="text-center" style="width: 80px;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    @* Dynamic Rows via JS *@
                                 </tbody>
                             </table>
                             <div id="emptyServicesState" class="text-center py-4 text-muted small" style="display:none;">
@@ -103,7 +107,7 @@
     </form>
 </div>
 
-@* --- ADD SERVICE MODAL --- *@
+@* --- MODIFIED ADD SERVICE MODAL --- *@
 <div class="modal fade" id="addServiceModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -114,12 +118,29 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label fw-semibold text-muted small text-uppercase">Service Name</label>
-                    <input type="text" id="modalCustomName" class="form-control border-secondary" placeholder="e.g. High-Speed Wi-Fi" />
-                    <div class="form-text small">Enter the name of the service tied to this unit.</div>
+                    <input type="text" id="modalCustomName" class="form-control border-secondary" placeholder="e.g. Electricity, Water, Wi-Fi" />
                 </div>
+
                 <div class="mb-3">
-                    <label class="form-label fw-semibold text-primary small text-uppercase">Monthly Price (₱)</label>
+                    <label class="form-label fw-semibold text-muted small text-uppercase d-block">Billing Type</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="billingType" id="typeFixed" value="false" checked autocomplete="off">
+                        <label class="btn btn-outline-primary" for="typeFixed"><i class="bi bi-calendar-check me-1"></i> Fixed</label>
+
+                        <input type="radio" class="btn-check" name="billingType" id="typeMetered" value="true" autocomplete="off">
+                        <label class="btn btn-outline-primary" for="typeMetered"><i class="bi bi-speedometer2 me-1"></i> Metered</label>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label id="priceLabel" class="form-label fw-semibold text-primary small text-uppercase">Monthly Price (₱)</label>
                     <input type="number" id="modalPrice" class="form-control border-primary shadow-sm fw-bold" step="0.01" placeholder="0.00" />
+                    <div id="priceHelp" class="form-text small text-info">Flat amount charged every month.</div>
+                </div>
+
+                <div id="meterNumberSection" class="mb-3 d-none">
+                    <label class="form-label fw-semibold text-muted small text-uppercase">Meter Serial Number</label>
+                    <input type="text" id="modalMeterNumber" class="form-control border-secondary" placeholder="e.g. SN-12345" />
                 </div>
             </div>
             <div class="modal-footer border-top-0 pt-0">
@@ -135,10 +156,33 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
+            // This pulls existing services from your EditModel
             let selectedServices = @Html.Raw(Model.ExistingServicesJson);
 
             const customNameInput = document.getElementById("modalCustomName");
             const priceInput = document.getElementById("modalPrice");
+            const meterNumberInput = document.getElementById("modalMeterNumber");
+            const radioFixed = document.getElementById("typeFixed");
+            const radioMetered = document.getElementById("typeMetered");
+            const priceLabel = document.getElementById("priceLabel");
+            const priceHelp = document.getElementById("priceHelp");
+            const meterSection = document.getElementById("meterNumberSection");
+
+            // --- Modal UI Toggle Logic ---
+            function updateModalUI() {
+                if (radioMetered.checked) {
+                    priceLabel.innerText = "Rate per Unit (₱)";
+                    priceHelp.innerText = "The cost per kWh, Cubic Meter, etc.";
+                    meterSection.classList.remove('d-none');
+                } else {
+                    priceLabel.innerText = "Monthly Price (₱)";
+                    priceHelp.innerText = "Flat amount charged every month.";
+                    meterSection.classList.add('d-none');
+                }
+            }
+
+            radioFixed.addEventListener('change', updateModalUI);
+            radioMetered.addEventListener('change', updateModalUI);
 
             function renderTable() {
                 const tbody = document.querySelector("#servicesTable tbody");
@@ -156,10 +200,18 @@
                     document.getElementById("servicesTable").style.display = "table";
 
                     selectedServices.forEach((service, index) => {
+                        const isMetered = service.IsMetered === true || service.IsMetered === "true";
+                        const typeBadge = isMetered
+                            ? '<span class="badge bg-info-soft text-info small ms-2"><i class="bi bi-speedometer2"></i> Metered</span>'
+                            : '';
+
                         // Render visible table row
                         const tr = document.createElement("tr");
                         tr.innerHTML = `
-                            <td class="fw-bold text-dark">${service.Name}</td>
+                            <td>
+                                <div class="fw-bold text-dark">${service.Name} ${typeBadge}</div>
+                                ${isMetered ? `<div class="small text-muted">Meter: ${service.MeterNumber || 'N/A'}</div>` : ''}
+                            </td>
                             <td class="text-end text-primary fw-bold">₱${parseFloat(service.MonthlyPrice).toFixed(2)}</td>
                             <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle" onclick="removeService(${index})">
@@ -173,6 +225,8 @@
                         hiddenContainer.innerHTML += `
                             <input type="hidden" name="SelectedServices[${index}].Name" value="${service.Name}" />
                             <input type="hidden" name="SelectedServices[${index}].MonthlyPrice" value="${service.MonthlyPrice}" />
+                            <input type="hidden" name="SelectedServices[${index}].IsMetered" value="${isMetered}" />
+                            <input type="hidden" name="SelectedServices[${index}].MeterNumber" value="${service.MeterNumber || ''}" />
                         `;
                     });
                 }
@@ -182,32 +236,50 @@
             document.getElementById("btnAddServiceToList").addEventListener("click", function () {
                 const name = customNameInput.value.trim();
                 const price = parseFloat(priceInput.value);
+                const isMetered = radioMetered.checked;
+                const meterNumber = meterNumberInput.value.trim();
 
                 if (!name || isNaN(price)) {
                     alert("Please provide a valid service name and monthly price.");
                     return;
                 }
 
-                selectedServices.push({ Name: name, MonthlyPrice: price });
+                selectedServices.push({
+                    Name: name,
+                    MonthlyPrice: price,
+                    IsMetered: isMetered,
+                    MeterNumber: meterNumber
+                });
+
                 renderTable();
 
                 // Clean up modal
                 customNameInput.value = "";
                 priceInput.value = "";
+                meterNumberInput.value = "";
+                radioFixed.checked = true;
+                updateModalUI();
 
                 const modalEl = document.getElementById('addServiceModal');
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 modal.hide();
             });
 
-            // Make remove function globally accessible
             window.removeService = function(index) {
                 selectedServices.splice(index, 1);
                 renderTable();
             };
 
-            // Initial render of existing services from the database
             renderTable();
         });
     </script>
+
+    <style>
+        .bg-info-soft {
+            background-color: #e1f5fe;
+            color: #0288d1;
+            border: 1px solid #b3e5fc;
+            padding: 0.35em 0.65em;
+        }
+    </style>
 }

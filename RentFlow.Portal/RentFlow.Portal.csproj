@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MyRoomService.Application\MyRoomService.Application.csproj" />
     <ProjectReference Include="..\MyRoomService.Domain\MyRoomService.Domain.csproj" />
     <ProjectReference Include="..\MyRoomService.Infrastructure\MyRoomService.Infrastructure.csproj" />
   </ItemGroup>

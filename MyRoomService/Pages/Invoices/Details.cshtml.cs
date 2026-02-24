@@ -5,6 +5,7 @@ using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
 using MyRoomService.Infrastructure.Persistence;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 
 namespace MyRoomService.Pages.Invoices
 {
@@ -12,11 +13,12 @@ namespace MyRoomService.Pages.Invoices
     {
         private readonly ApplicationDbContext _context;
         private readonly ITenantService _tenantService;
-
-        public DetailsModel(ApplicationDbContext context, ITenantService tenantService)
+        private readonly ILogger<DetailsModel> _logger;
+        public DetailsModel(ApplicationDbContext context, ITenantService tenantService, ILogger<DetailsModel> logger)
         {
             _context = context;
             _tenantService = tenantService;
+            _logger = logger;
         }
 
         public Invoice Invoice { get; set; } = default!;
@@ -144,6 +146,76 @@ namespace MyRoomService.Pages.Invoices
                 await _context.SaveChangesAsync();
 
                 // Stay on the details page so they can see the updated balance
+                return RedirectToPage(new { id = id });
+            }
+        }
+        // --- Add these to your DetailsModel class ---
+
+        public async Task<IActionResult> OnPostPublishAsync(Guid id)
+        {
+            var tenantId = _tenantService.GetTenantId();
+            var invoice = await _context.Invoices
+                .FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
+
+            if (invoice != null && !invoice.IsPublished)
+            {
+                invoice.IsPublished = true;
+                await _context.SaveChangesAsync();
+                TempData["StatusMessage"] = "Invoice published! It is now visible to the occupant.";
+            }
+
+            return RedirectToPage(new { id = id });
+        }
+
+        public async Task<IActionResult> OnPostVoidAsync(Guid id)
+        {
+            var tenantId = _tenantService.GetTenantId();
+
+            var invoice = await _context.Invoices
+                .Include(i => i.Items)
+                .Include(i => i.Contract)
+                    .ThenInclude(c => c.AddOns)
+                .FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
+
+            if (invoice == null || invoice.Status == "PAID")
+            {
+                TempData["StatusMessage"] = "Error: Invoice cannot be voided.";
+                return RedirectToPage(new { id = id });
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // FIX: Use {0} for Debug.WriteLine or string.Format
+                // If using _logger, {InvoiceId} is fine, but let's use {0} to be safe across all providers
+                _logger.LogInformation("Attempting to VOID invoice {0}", id);
+
+                foreach (var item in invoice.Items.Where(x => x.ContractAddOnId.HasValue))
+                {
+                    var originalAddon = invoice.Contract?.AddOns
+                        .FirstOrDefault(a => a.Id == item.ContractAddOnId);
+
+                    if (originalAddon != null)
+                    {
+                        originalAddon.IsProcessed = false;
+                    }
+                }
+
+                invoice.Status = "VOID";
+                invoice.IsPublished = false;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                TempData["StatusMessage"] = "Success: Invoice voided.";
+                return RedirectToPage("./Index");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                // FIX: Ensure this log doesn't crash either
+                _logger.LogError(ex, "Failed to void invoice {0}", id);
+                TempData["StatusMessage"] = "Error: Could not void invoice.";
                 return RedirectToPage(new { id = id });
             }
         }

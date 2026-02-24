@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyRoomService.Infrastructure.Persistence;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyRoomService.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260224111552_AddInvoiceItemLinks")]
+    partial class AddInvoiceItemLinks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -383,25 +386,24 @@ namespace MyRoomService.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(10, 2)");
+
                     b.Property<Guid>("ContractId")
                         .HasColumnType("uuid");
 
-                    b.Property<decimal?>("OverrideAmount")
-                        .HasColumnType("decimal(10, 2)");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("UnitServiceId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ContractId");
 
-                    b.HasIndex("UnitServiceId");
-
-                    b.ToTable("ContractIncludedServices");
+                    b.ToTable("ContractIncludedService");
                 });
 
             modelBuilder.Entity("MyRoomService.Domain.Entities.Invoice", b =>
@@ -728,13 +730,13 @@ namespace MyRoomService.Infrastructure.Migrations
                     b.HasOne("MyRoomService.Domain.Entities.Occupant", "Occupant")
                         .WithMany("Contracts")
                         .HasForeignKey("OccupantId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("MyRoomService.Domain.Entities.Unit", "Unit")
                         .WithMany("Contracts")
                         .HasForeignKey("UnitId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Occupant");
@@ -747,7 +749,7 @@ namespace MyRoomService.Infrastructure.Migrations
                     b.HasOne("MyRoomService.Domain.Entities.ChargeDefinition", "ChargeDefinition")
                         .WithMany()
                         .HasForeignKey("ChargeDefinitionId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("MyRoomService.Domain.Entities.Contract", "Contract")
@@ -769,15 +771,7 @@ namespace MyRoomService.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MyRoomService.Domain.Entities.UnitService", "UnitService")
-                        .WithMany()
-                        .HasForeignKey("UnitServiceId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.Navigation("Contract");
-
-                    b.Navigation("UnitService");
                 });
 
             modelBuilder.Entity("MyRoomService.Domain.Entities.Invoice", b =>
@@ -785,13 +779,13 @@ namespace MyRoomService.Infrastructure.Migrations
                     b.HasOne("MyRoomService.Domain.Entities.Contract", "Contract")
                         .WithMany("Invoices")
                         .HasForeignKey("ContractId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("MyRoomService.Domain.Entities.Occupant", "Occupant")
                         .WithMany()
                         .HasForeignKey("OccupantId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Contract");
@@ -829,7 +823,7 @@ namespace MyRoomService.Infrastructure.Migrations
                     b.HasOne("MyRoomService.Domain.Entities.UnitService", "UnitService")
                         .WithMany()
                         .HasForeignKey("UnitServiceId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("UnitService");
