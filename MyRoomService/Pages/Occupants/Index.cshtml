@@ -26,7 +26,13 @@
                         <span class="input-group-text bg-transparent border-end-0 text-muted">
                             <i class="bi bi-search"></i>
                         </span>
-                        <input type="text" class="form-control border-start-0 ps-0" id="occupantSearch" placeholder="Find by name, phone, or email...">
+                        <input type="text"
+                               id="searchInput"
+                               value="@Model.SearchTerm"
+                               class="form-control border-start-0 ps-0"
+                               placeholder="Search by name, email, or unit..."
+                               aria-label="Search"
+                               autocomplete="off">
                     </div>
                 </div>
             </div>
@@ -56,7 +62,7 @@
 
     @* --- Table Section --- *@
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="table-responsive">
+        <div class="table-responsive" id="occupantsTableContainer">
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-light border-bottom">
                     <tr>
@@ -152,9 +158,11 @@
                                     <a asp-page="./Edit" asp-route-id="@occupant.Id" class="btn btn-white btn-sm px-3 border-end" title="Edit Info">
                                         <i class="bi bi-pencil text-secondary"></i>
                                     </a>
-                                    <button class="btn btn-white btn-sm px-3" title="Archive/Delete">
-                                        <i class="bi bi-trash text-danger"></i>
-                                    </button>
+                                    
+                                    <a asp-page="./Archive" asp-route-id="@occupant.Id" class="btn btn-white btn-sm border-end" title="Archive Occupant"> 
+                                        <i class="bi bi-archive text-danger"></i>
+                                    </a>
+                                    
                                 </div>
                             </td>
                         </tr>
@@ -194,3 +202,53 @@
         background-color: rgba(0,0,0,0.01);
     }
 </style>
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let debounceTimer;
+            const searchInput = document.getElementById('searchInput');
+            const tableContainer = document.getElementById('occupantsTableContainer');
+
+            if (searchInput && tableContainer) {
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(debounceTimer);
+                    const searchTerm = this.value;
+
+                    // Set debounce for 400ms
+                    debounceTimer = setTimeout(() => {
+                        const url = new URL(window.location.href);
+                        if (searchTerm) {
+                            url.searchParams.set('SearchTerm', searchTerm);
+                        } else {
+                            url.searchParams.delete('SearchTerm');
+                        }
+
+                        // Fetch the new HTML in the background (SPA-like experience)
+                        fetch(url)
+                            .then(response => response.text())
+                            .then(html => {
+                                // Extract just the table container from the server response
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, 'text/html');
+                                const newTable = doc.getElementById('occupantsTableContainer');
+
+                                if (newTable) {
+                                    // Update the table seamlessly
+                                    tableContainer.innerHTML = newTable.innerHTML;
+                                }
+
+                                // Update the browser URL without reloading the page
+                                window.history.replaceState({}, '', url);
+                            });
+
+                    }, 400);
+                });
+
+                // Optional UI trick: Move cursor to the end of the text on page load
+                const val = searchInput.value;
+                searchInput.value = '';
+                searchInput.value = val;
+            }
+        });
+    </script>
+}

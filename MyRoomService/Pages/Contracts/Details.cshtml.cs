@@ -23,24 +23,37 @@ namespace MyRoomService.Pages.Contracts
 
         public async Task<IActionResult> OnGetAsync(Guid id)
         {
-            var tenantId = _tenantService.GetTenantId();
+            ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
+            {
+                ("Contracts", "/Contracts"),
+                ("Details", "")
+            };
+            try
+            {
+                var tenantId = _tenantService.GetTenantId();
 
-            Contract = await _context.Contracts
-                .Include(c => c.Occupant)
-                .Include(c => c.Unit)
-                    .ThenInclude(u => u.Building)
-                .Include(c => c.Unit)
-                    .ThenInclude(u => u.UnitServices) // <--- CRITICAL: Add this line
-                .Include(c => c.AddOns)
-                    .ThenInclude(a => a.ChargeDefinition)
-                .FirstOrDefaultAsync(m => m.Id == id);
+                Contract = await _context.Contracts
+                    .Include(c => c.Occupant)
+                    .Include(c => c.Unit)
+                        .ThenInclude(u => u.Building)
+                    .Include(c => c.Unit)
+                        .ThenInclude(u => u.UnitServices) // <--- CRITICAL: Add this line
+                    .Include(c => c.AddOns)
+                        .ThenInclude(a => a.ChargeDefinition)
+                    .FirstOrDefaultAsync(m => m.Id == id);
 
-            if (Contract == null) return NotFound();
+                if (Contract == null) return NotFound();
 
 
-            OwnerName = this.GetTenantName(tenantId);
+                OwnerName = this.GetTenantName(tenantId);
 
-            return Page();
+                return Page();
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
         }
         //get tenant name for display purposes
         public string GetTenantName(Guid id)

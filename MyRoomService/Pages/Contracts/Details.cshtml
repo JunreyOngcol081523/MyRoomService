@@ -1,209 +1,208 @@
 ﻿@page "{id:Guid}"
 @model MyRoomService.Pages.Contracts.DetailsModel
 @{
-    // We do NOT want the standard web layout (no navbars, no sidebars)
-    Layout = null;
+    ViewData["Title"] = "Contract Details";
 }
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lease Agreement - @Model.Contract.Occupant.LastName</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<div class="container-fluid py-4 px-lg-5">
 
-    <style>
-        /* Make it look like a legal document */
-        body {
-            font-family: "Times New Roman", Times, serif; /* Standard legal font */
-            color: #000;
-            background-color: #f8f9fa; /* Grey background for the screen */
-        }
-
-        .paper-document {
-            background-color: white;
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 60px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.1);
-        }
-
-        .legal-text {
-            text-align: justify;
-            line-height: 1.6;
-        }
-
-        .signature-line {
-            border-bottom: 1px solid #000;
-            width: 100%;
-            display: inline-block;
-            margin-top: 40px;
-            margin-bottom: 5px;
-        }
-
-        /* --- PRINT MAGIC --- */
-        /* When the user hits Ctrl+P or the Print button, this CSS runs */
-        @@media print {
-            body {
-                background-color: white;
-            }
-
-            .paper-document {
-                margin: 0;
-                padding: 0;
-                box-shadow: none;
-                max-width: 100%;
-            }
-
-            .no-print {
-                display: none !important; /* Hides the print button on the paper */
-            }
-        }
-    </style>
-</head>
-<body>
-
-    <div class="text-center py-3 bg-dark no-print sticky-top">
-        <button onclick="window.print()" class="btn btn-primary btn-lg px-5 fw-bold shadow">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-printer me-2" viewBox="0 0 16 16">
-                <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" />
-                <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z" />
-            </svg>
-            Print / Save to PDF
-        </button>
-        <a href="javascript:history.back()" class="btn btn-outline-light ms-3">Cancel</a>
-    </div>
-
-    <div class="paper-document">
-        <div class="text-center mb-5">
-            <h1 class="fw-bold text-uppercase" style="letter-spacing: 2px;">Lease Agreement</h1>
-            <p class="text-muted">Contract Reference: @Model.Contract.Id.ToString().Substring(0, 8).ToUpper()</p>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold mb-0 text-dark">Contract Overview</h2>
+            <p class="text-muted mb-0">Reference: <span class="fw-semibold font-monospace">@Model.Contract.Id.ToString().Substring(0, 8).ToUpper()</span></p>
         </div>
-
-        <p class="legal-text mb-4">
-            This Lease Agreement (the "Agreement") is entered into on this <strong>@DateTime.Today.ToString("MMMM dd, yyyy")</strong>, by and between:
-        </p>
-
-        <div class="row mb-4 ps-4">
-            <div class="col-6">
-                <strong>LANDLORD:</strong><br />
-                @Model.OwnerName
-            </div>
-            <div class="col-6">
-                <strong>TENANT (OCCUPANT):</strong><br />
-                @Model.Contract.Occupant.FirstName @Model.Contract.Occupant.LastName
-            </div>
-        </div>
-
-        <p class="legal-text mb-4">
-            The Landlord hereby agrees to lease the premises located at <strong>@Model.Contract.Unit.Building.Name, Unit @Model.Contract.Unit.UnitNumber</strong> (the "Premises") to the Tenant, subject to the terms and conditions outlined below.
-        </p>
-
-        <h4 class="fw-bold mt-5 mb-3">1. Lease Term & Financials</h4>
-        <ul class="legal-text">
-            <li><strong>Start Date:</strong> @Model.Contract.StartDate.ToString("MMMM dd, yyyy")</li>
-            <li>
-                <strong>End Date:</strong>
-                @(Model.Contract.EndDate.HasValue? Model.Contract.EndDate.Value.ToString("MMMM dd, yyyy") : "Month-to-Month (No set end date)")
-            </li>
-            <li><strong>Base Monthly Rent:</strong> ₱@Model.Contract.RentAmount.ToString("N2")</li>
-            <li><strong>Billing Date:</strong> The @Model.Contract.BillingDay@GetDaySuffix(Model.Contract.BillingDay) of every month.</li>
-        </ul>
-
-        <h4 class="fw-bold mt-4 mb-3">2. Recurring Add-on Charges</h4>
-        @if (Model.Contract.AddOns != null && Model.Contract.AddOns.Any())
-        {
-            <p class="legal-text">In addition to the base rent, the Tenant agrees to pay the following recurring charges:</p>
-            <table class="table table-sm table-bordered border-dark legal-text">
-                <thead>
-                    <tr>
-                        <th>Charge Description</th>
-                        <th>Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var addon in Model.Contract.AddOns)
-                    {
-                        <tr>
-                            <td>@addon.ChargeDefinition.Name (@addon.ChargeDefinition.ChargeType)</td>
-                            <td>₱@addon.AgreedAmount.ToString("N2")</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        }
-        else
-        {
-            <p class="legal-text">There are no additional recurring charges assigned to this contract at this time.</p>
-        }
-        <h4 class="fw-bold mt-4 mb-3">3. Included Unit Services</h4>
-        @if (Model.Contract.Unit.UnitServices != null && Model.Contract.Unit.UnitServices.Any())
-        {
-            <p class="legal-text">The following services are provided specifically for <strong>Unit @Model.Contract.Unit.UnitNumber</strong> and are included in the monthly obligations:</p>
-            <table class="table table-sm table-bordered border-dark legal-text">
-                <thead>
-                    <tr>
-                        <th>Service Name</th>
-                        <th>Monthly Fee</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var service in Model.Contract.Unit.UnitServices)
-                    {
-                        <tr>
-                            <td>@service.Name</td>
-                            <td>₱@service.MonthlyPrice.ToString("N2")</td>
-                        </tr>
-                    }
-                </tbody>
-                <tfoot>
-                    <tr class="fw-bold">
-                        <td>Total Unit Services</td>
-                        <td>₱@Model.Contract.Unit.UnitServices.Sum(s => s.MonthlyPrice).ToString("N2")</td>
-                    </tr>
-                </tfoot>
-            </table>
-        }
-        else
-        {
-            <p class="legal-text">No specific unit-level services are assigned to this unit.</p>
-        }
-
-        <h4 class="fw-bold mt-5 mb-3">3. Terms and Conditions</h4>
-        <p class="legal-text">
-            The Tenant agrees to maintain the property in good condition, adhere to all building rules and regulations, and pay rent on or before the agreed billing date. Failure to remit payment within the specified grace period may result in penalties or immediate termination of this agreement at the Landlord's discretion.
-        </p>
-
-        <div class="row mt-5 pt-5">
-            <div class="col-5">
-                <span class="signature-line"></span>
-                <div class="text-center fw-bold">Landlord Signature</div>
-                <div class="text-center small text-muted">@Model.OwnerName</div>
-            </div>
-            <div class="col-2"></div>
-            <div class="col-5">
-                <span class="signature-line"></span>
-                <div class="text-center fw-bold">Tenant Signature</div>
-                <div class="text-center small text-muted">@Model.Contract.Occupant.FirstName @Model.Contract.Occupant.LastName</div>
-            </div>
+        <div class="d-flex gap-2">
+            <a asp-page="./Index" asp-route-occupantId="@Model.Contract.OccupantId" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
+                <i class="bi bi-arrow-left me-2"></i>Back to List
+            </a>
+            @* We will hook this up to your new Print page later! *@
+            <a asp-page="./Print" asp-route-id="@Model.Contract.Id" class="btn btn-dark rounded-pill px-4 shadow-sm" target="_blank">
+                <i class="bi bi-printer me-2"></i>Print Contract
+            </a>
+            <a asp-page="./Edit" asp-route-id="@Model.Contract.Id" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                <i class="bi bi-pencil me-2"></i>Edit Contract
+            </a>
         </div>
     </div>
 
-</body>
-</html>
+    <div class="row g-4">
+        @* --- Left Column: Primary Information --- *@
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 mb-4">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-info-circle text-primary me-2"></i>Lease Information</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="text-muted small fw-bold mb-1">Occupant</label>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle-sm bg-light text-primary border me-3">
+                                    <i class="bi bi-person"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-0">@Model.Contract.Occupant.FirstName @Model.Contract.Occupant.LastName</h6>
+                                    <a asp-page="/Occupants/Details" asp-route-id="@Model.Contract.OccupantId" class="text-decoration-none small">View Profile</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small fw-bold mb-1">Property Location</label>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle-sm bg-light text-primary border me-3">
+                                    <i class="bi bi-building"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-0">Unit @Model.Contract.Unit.UnitNumber</h6>
+                                    <span class="text-muted small">@Model.Contract.Unit.Building.Name</span>
+                                </div>
+                            </div>
+                        </div>
 
-@* Helper function for 1st, 2nd, 3rd, 4th suffix *@
-@functions {
-    public string GetDaySuffix(int day)
-    {
-        if (day >= 11 && day <= 13) return "th";
-        switch (day % 10)
-        {
-            case 1: return "st";
-            case 2: return "nd";
-            case 3: return "rd";
-            default: return "th";
-        }
+                        <div class="col-12">
+                            <hr class="text-muted opacity-25">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="text-muted small fw-bold mb-1">Status</label>
+                            <div>
+                                @{
+                                    var badgeClass = Model.Contract.Status switch
+                                    {
+                                        Domain.Entities.ContractStatus.Active => "bg-success text-white",
+                                        Domain.Entities.ContractStatus.Terminated => "bg-danger text-white",
+                                        Domain.Entities.ContractStatus.Ended => "bg-secondary text-white",
+                                        Domain.Entities.ContractStatus.Reserved => "bg-info text-dark",
+                                        _ => "bg-primary text-white"
+                                    };
+                                }
+                                <span class="badge @badgeClass rounded-pill px-3 py-2 border">@Model.Contract.Status.ToString()</span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="text-muted small fw-bold mb-1">Start Date</label>
+                            <h6 class="fw-semibold mb-0">@Model.Contract.StartDate.ToString("MMM dd, yyyy")</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="text-muted small fw-bold mb-1">End Date</label>
+                            <h6 class="fw-semibold mb-0">
+                                @(Model.Contract.EndDate.HasValue? Model.Contract.EndDate.Value.ToString("MMM dd, yyyy") : "Ongoing")
+                            </h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* --- Included Services (from the Unit) --- *@
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-box-seam text-info me-2"></i>Included Unit Services</h5>
+                </div>
+                <div class="card-body p-4">
+                    @if (Model.Contract.Unit.UnitServices != null && Model.Contract.Unit.UnitServices.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light text-secondary">
+                                    <tr>
+                                        <th class="rounded-start border-0">Service Name</th>
+                                        <th class="rounded-end border-0 text-end">Monthly Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var service in Model.Contract.Unit.UnitServices)
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold text-dark border-bottom-0 py-3">@service.Name</td>
+                                            <td class="text-end border-bottom-0 py-3">@service.MonthlyPrice.ToString("C")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0 fst-italic">This unit does not have any built-in services attached to it.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        @* --- Right Column: Financial Breakdown --- *@
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-light">
+                <div class="card-header bg-transparent border-bottom-0 pt-4 pb-0 px-4">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-wallet2 text-success me-2"></i>Financials</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted fw-bold">Base Rent</span>
+                        <span class="fw-semibold text-dark">@Model.Contract.RentAmount.ToString("C")</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted fw-bold">Billing Cycle</span>
+                        <span class="badge bg-white border text-dark">Day @Model.Contract.BillingDay</span>
+                    </div>
+
+                    <hr class="text-muted opacity-25 my-4">
+
+                    <h6 class="fw-bold mb-3 text-secondary">Recurring Add-Ons</h6>
+
+                    @if (Model.Contract.AddOns != null && Model.Contract.AddOns.Any())
+                    {
+                        <ul class="list-group list-group-flush mb-4 rounded-3 border">
+                            @foreach (var addon in Model.Contract.AddOns)
+                            {
+                                <li class="list-group-item bg-white d-flex justify-content-between align-items-center py-3">
+                                    <div>
+                                        <span class="fw-semibold text-dark d-block">@addon.ChargeDefinition.Name</span>
+                                        <span class="badge bg-light text-muted border border-secondary border-opacity-25">@addon.ChargeDefinition.ChargeType</span>
+                                    </div>
+                                    <span class="fw-semibold text-success">@addon.AgreedAmount.ToString("C")</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="alert alert-light border mb-4 text-muted small">
+                            No active add-on charges applied to this contract.
+                        </div>
+                    }
+
+                    <div class="p-3 bg-white rounded-3 border mt-auto shadow-sm">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark">Estimated Total/Mo</span>
+                            <span class="fs-5 fw-bold text-primary">
+                                @{
+                                    decimal total = Model.Contract.RentAmount;
+                                    if (Model.Contract.AddOns != null)
+                                    {
+                                        total += Model.Contract.AddOns.Where(a => a.ChargeDefinition.ChargeType == "RECURRING").Sum(a => a.AgreedAmount);
+                                    }
+                                }
+                                @total.ToString("C")
+                            </span>
+                        </div>
+                        <div class="text-muted small text-end mt-1">*Excludes one-time fees & meter readings</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-circle-sm {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 1.1rem;
     }
-}
+</style>

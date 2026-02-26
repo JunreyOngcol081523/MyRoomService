@@ -18,6 +18,7 @@ namespace MyRoomService.Domain.Entities
         // Navigation: One occupant can have multiple contracts over time
         public ICollection<Contract> Contracts { get; set; } = new List<Contract>();
         public string? IdentityUserId { get; set; } // Links to AspNetUsers.Id
+        public bool IsArchived { get; set; } = false;
     }
     public enum KycStatus
     {

@@ -30,16 +30,14 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        if (User.Identity.IsAuthenticated)
+        if (User.Identity?.IsAuthenticated == true)
         {
             var user = await _userManager.GetUserAsync(User);
             // Later we will fetch the Tenant Name here!
             BusinessName = "Your SaaS Dashboard";
-        }
-        if (User.Identity?.IsAuthenticated == true)
-        {
+
             var tenantId = _tenantService.GetTenantId();
-            var now = DateTime.Now;
+            var now = DateTime.Now; // Or DateTime.UtcNow if your DB requires it
             var firstDayOfMonth = new DateTime(now.Year, now.Month, 1);
 
             // 1. Physical Assets
@@ -47,32 +45,32 @@ public class IndexModel : PageModel
             TotalBuildings = await _context.Buildings.CountAsync(b => b.TenantId == tenantId);
 
             // 2. Financials - Current Month Collection
-            //// Use UtcNow instead of Now
-            //var now = DateTime.UtcNow;
-
-            //// Explicitly tell .NET this is a UTC date
-            //var firstDayOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-
-            // ... rest of your code ...
+            // Exclude VOID just in case a voided invoice had a partial payment attached
             MonthlyCollection = await _context.Invoices
-                .Where(i => i.TenantId == tenantId && i.InvoiceDate >= firstDayOfMonth)
+                .Where(i => i.TenantId == tenantId
+                         && i.InvoiceDate >= firstDayOfMonth
+                         && i.Status != "VOID")
                 .SumAsync(i => i.AmountPaid);
 
             // 3. Financials - Total Unpaid (Collectibles)
+            // Explicitly look for UNPAID to exclude VOID and PAID
             TotalCollectibles = await _context.Invoices
-                .Where(i => i.TenantId == tenantId && i.Status != "PAID")
+                .Where(i => i.TenantId == tenantId && i.Status == "UNPAID")
                 .SumAsync(i => i.TotalAmount - i.AmountPaid);
 
             // 4. Delinquency - Count unique occupants with outstanding balances
             UnpaidOccupantsCount = await _context.Invoices
-                .Where(i => i.TenantId == tenantId && i.Status != "PAID")
+                .Where(i => i.TenantId == tenantId && i.Status == "UNPAID")
                 .Select(i => i.OccupantId)
                 .Distinct()
                 .CountAsync();
 
             // 5. Collection Efficiency Rate (Paid vs Total Invoiced this month)
+            // MUST exclude VOID invoices here so they don't count against your efficiency rate
             var totalInvoicedThisMonth = await _context.Invoices
-                .Where(i => i.TenantId == tenantId && i.InvoiceDate >= firstDayOfMonth)
+                .Where(i => i.TenantId == tenantId
+                         && i.InvoiceDate >= firstDayOfMonth
+                         && i.Status != "VOID")
                 .SumAsync(i => i.TotalAmount);
 
             CollectionEfficiency = totalInvoicedThisMonth > 0

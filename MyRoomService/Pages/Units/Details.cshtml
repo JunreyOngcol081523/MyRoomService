@@ -69,23 +69,52 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Service Name</th>
-                                        <th class="text-end">Monthly Price</th>
+                                        <th class="text-center">Billing Type</th>
+                                        <th class="text-end">Price/Rate</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach (var service in Model.Unit.UnitServices)
                                     {
                                         <tr>
-                                            <td class="fw-semibold">@service.Name</td>
-                                            <td class="text-end text-primary fw-bold">₱@service.MonthlyPrice.ToString("N2")</td>
+                                            <td>
+                                                <div class="fw-semibold">@service.Name</div>
+                                                @if (!string.IsNullOrEmpty(service.MeterNumber))
+                                                {
+                                                    <small class="text-muted font-monospace" style="font-size: 0.75rem;">SN: @service.MeterNumber</small>
+                                                }
+                                            </td>
+                                            <td class="text-center">
+                                                @if (service.IsMetered)
+                                                {
+                                                    <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-3">
+                                                        <i class="bi bi-speedometer2 me-1"></i> Metered
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill px-3">
+                                                        <i class="bi bi-calendar-check me-1"></i> Fixed Fee
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td class="text-end fw-bold">
+                                                <span class="@(service.IsMetered ? "text-info" : "text-primary")">
+                                                    ₱@service.MonthlyPrice.ToString("N2")
+                                                </span>
+                                                <small class="text-muted d-block" style="font-size: 0.7rem;">
+                                                    @(service.IsMetered ? "per unit" : "per month")
+                                                </small>
+                                            </td>
                                         </tr>
                                     }
                                 </tbody>
                                 <tfoot class="table-light">
                                     <tr>
-                                        <td class="text-end fw-bold text-muted">Total Additional Services:</td>
+                                        <td colspan="2" class="text-end fw-bold text-muted">Fixed Monthly Total:</td>
                                         <td class="text-end fw-bold text-dark fs-6">
-                                            ₱@Model.Unit.UnitServices.Sum(s => s.MonthlyPrice).ToString("N2")
+                                            @* We only sum non-metered services for the fixed total *@
+                                            ₱@Model.Unit.UnitServices.Where(s => !s.IsMetered).Sum(s => s.MonthlyPrice).ToString("N2")
                                         </td>
                                     </tr>
                                 </tfoot>

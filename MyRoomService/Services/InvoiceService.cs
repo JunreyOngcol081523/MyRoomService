@@ -9,6 +9,7 @@ namespace MyRoomService.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly ILogger<InvoiceService> _logger;
+
         public InvoiceService(ApplicationDbContext context, ILogger<InvoiceService> logger)
         {
             _context = context;
@@ -19,28 +20,51 @@ namespace MyRoomService.Services
         {
             try
             {
-                var eligibleContracts = await _context.Contracts
-                    .Where(c => c.TenantId == tenantId
-                             && c.Status == ContractStatus.Active
-                             && c.BillingDay == targetDate.Day)
+                // Fetch ALL Active contracts instead of strictly matching today's day
+                var activeContracts = await _context.Contracts
+                    .Where(c => c.TenantId == tenantId && c.Status == ContractStatus.Active)
                     .ToListAsync();
 
                 int generatedCount = 0;
-                foreach (var contract in eligibleContracts)
+
+                foreach (var contract in activeContracts)
                 {
                     try
                     {
-                        var invoice = await GenerateInvoiceForContractAsync(tenantId, contract.Id, targetDate, autoPublish);
-                        if (invoice != null) generatedCount++;
+                        // Calculate the correct billing date for this specific month
+                        // Math.Min protects against short months (e.g., BillingDay 31 becomes Feb 28)
+                        int daysInMonth = DateTime.DaysInMonth(targetDate.Year, targetDate.Month);
+                        int actualBillingDay = Math.Min(contract.BillingDay, daysInMonth);
+
+                        var expectedBillingDate = new DateTime(targetDate.Year, targetDate.Month, actualBillingDay);
+
+                        // If today (targetDate) is ON or PAST their billing date for this month, process them!
+                        if (targetDate.Date >= expectedBillingDate.Date)
+                        {
+                            // Pass the 'expectedBillingDate' so the invoice reflects their actual due cycle, 
+                            // even if the system is catching up a few days late.
+                            var invoice = await GenerateInvoiceForContractAsync(tenantId, contract.Id, expectedBillingDate, autoPublish);
+
+                            if (invoice != null)
+                            {
+                                generatedCount++;
+                            }
+                        }
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        _logger.LogError(ex, "Failed to process billing for Contract {ContractId}", contract.Id);
                         continue; // Keep going if one contract fails
                     }
                 }
+
                 return generatedCount;
             }
-            catch (Exception) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Critical failure running the billing cycle.");
+                throw;
+            }
         }
 
         public async Task<Invoice?> GenerateInvoiceForContractAsync(
@@ -53,49 +77,22 @@ namespace MyRoomService.Services
 
             try
             {
-                _logger.LogInformation("========== INVOICE GENERATION START ==========");
-                _logger.LogInformation("Contract ID: {ContractId}", contractId);
-                _logger.LogInformation("Target Date: {TargetDate:yyyy-MM-dd}", targetDate);
-
-                // Load contract with explicit includes and AsSplitQuery to handle large data sets safely
+                // 1. Load Contract + Unit + ALL Services + AddOns
                 var contract = await _context.Contracts
-                    .Include(c => c.AddOns)
-                        .ThenInclude(a => a.ChargeDefinition)
-                    .Include(c => c.IncludedServices)
-                        .ThenInclude(cis => cis.UnitService)
+                    .Include(c => c.Occupant)
+                    .Include(c => c.AddOns).ThenInclude(a => a.ChargeDefinition)
+                    .Include(c => c.Unit).ThenInclude(u => u.UnitServices)
                     .AsSplitQuery()
                     .FirstOrDefaultAsync(c => c.Id == contractId && c.TenantId == tenantId);
 
-                if (contract == null)
-                {
-                    _logger.LogWarning("❌ Contract not found for ID: {ContractId}", contractId);
-                    return null;
-                }
+                if (contract == null || contract.Status != ContractStatus.Active) return null;
 
-                _logger.LogInformation("✅ Contract loaded: Status={Status}, Rent={Rent:C}", contract.Status, contract.RentAmount);
-                _logger.LogInformation("AddOns collection: {Count}", contract.AddOns?.Count.ToString() ?? "NULL");
-                _logger.LogInformation("IncludedServices collection: {Count}", contract.IncludedServices?.Count.ToString() ?? "NULL");
+                // 2. Duplicate Check (Rule 1 & Rule 5 safety)
+                var exists = await _context.Invoices.AnyAsync(i => i.ContractId == contractId
+                    && i.InvoiceDate.Month == targetDate.Month && i.InvoiceDate.Year == targetDate.Year && i.Status != "VOID");
+                if (exists) return null;
 
-                if (contract.Status != ContractStatus.Active)
-                {
-                    _logger.LogWarning("❌ Contract not active. Current Status: {Status}", contract.Status);
-                    return null;
-                }
-
-                // Duplicate check for the billing period
-                var existingInvoice = await _context.Invoices
-                    .AnyAsync(i => i.ContractId == contractId
-                                && i.InvoiceDate.Month == targetDate.Month
-                                && i.InvoiceDate.Year == targetDate.Year
-                                && i.Status != "VOID");
-
-                if (existingInvoice)
-                {
-                    _logger.LogWarning("❌ Invoice already exists for this period ({Month}/{Year})", targetDate.Month, targetDate.Year);
-                    return null;
-                }
-
-                // Initialize invoice
+                // 3. Initialize Invoice
                 var invoice = new Invoice
                 {
                     Id = Guid.NewGuid(),
@@ -105,153 +102,127 @@ namespace MyRoomService.Services
                     InvoiceDate = targetDate,
                     DueDate = targetDate.AddDays(5),
                     Status = "UNPAID",
-                    CreatedAt = DateTime.UtcNow,
                     IsPublished = autoPublish,
+                    CreatedAt = DateTime.UtcNow,
                     Items = new List<InvoiceItem>()
                 };
 
                 decimal runningTotal = 0;
-                int itemCount = 0;
 
-                // --- BASE RENT ---
-                _logger.LogInformation("--- Adding Rent ---");
+                // --- SECTION A: BASE RENT ---
                 var rentItem = new InvoiceItem
                 {
                     Id = Guid.NewGuid(),
                     TenantId = tenantId,
                     InvoiceId = invoice.Id,
                     ItemType = "RENT",
-                    Description = $"Base Rent for {targetDate:MMM yyyy}",
+                    Description = $"Base Rent - {targetDate:MMM yyyy}",
                     Amount = contract.RentAmount
                 };
                 invoice.Items.Add(rentItem);
                 runningTotal += rentItem.Amount;
-                itemCount++;
-                _logger.LogInformation("✅ Added: {Description} - {Amount:C}", rentItem.Description, rentItem.Amount);
 
-                // --- ADD-ONS ---
-                // --- ADD-ONS ---
-                _logger.LogInformation("--- Processing AddOns ---");
-
-                if (contract.AddOns != null && contract.AddOns.Any())
+                // --- SECTION B: UNIT SERVICES (ONLY FIXED SERVICES) ---
+                if (contract.Unit?.UnitServices != null)
                 {
-                    foreach (var addon in contract.AddOns)
+                    foreach (var service in contract.Unit.UnitServices)
                     {
-                        var charge = addon.ChargeDefinition;
-                        if (charge == null) continue;
+                        // CRITICAL: We skip metered services here because they are handled in Section C
+                        if (service.IsMetered) continue;
 
-                        // Use .Trim() and OrdinalIgnoreCase to handle spaces and casing
-                        string type = charge.ChargeType?.Trim() ?? "";
-                        bool isRecurring = string.Equals(type, "RECURRING", StringComparison.OrdinalIgnoreCase);
-                        bool isOneTime = string.Equals(type, "ONE_TIME", StringComparison.OrdinalIgnoreCase);
-
-                        // Final logic check
-                        bool shouldInclude = isRecurring || (isOneTime && !addon.IsProcessed);
-
-                        _logger.LogInformation("  Checking AddOn: {Name} | Type: '{Type}' | IsProcessed: {Proc} | ShouldInclude: {Should}",
-                            charge.Name, type, addon.IsProcessed, shouldInclude);
-
-                        if (shouldInclude)
-                        {
-                            var addonItem = new InvoiceItem
-                            {
-                                Id = Guid.NewGuid(),
-                                TenantId = tenantId,
-                                InvoiceId = invoice.Id,
-                                ItemType = "ADD_ON",
-                                Description = charge.Name,
-                                Amount = addon.AgreedAmount,
-                                ContractAddOnId = addon.Id
-                            };
-
-                            invoice.Items.Add(addonItem);
-                            runningTotal += addonItem.Amount;
-                            itemCount++;
-
-                            if (isOneTime)
-                            {
-                                addon.IsProcessed = true;
-                                _logger.LogInformation("  -> Marked {Name} as Processed.", charge.Name);
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    _logger.LogWarning("No AddOns found for this contract in the database.");
-                }
-
-                // --- INCLUDED SERVICES ---
-                _logger.LogInformation("--- Processing IncludedServices ---");
-                if (contract.IncludedServices != null && contract.IncludedServices.Any())
-                {
-                    foreach (var contractService in contract.IncludedServices)
-                    {
-                        var unitService = contractService.UnitService;
-                        if (unitService == null)
-                        {
-                            _logger.LogWarning("Service {ServiceId} has null UnitService. Skipping.", contractService.Id);
-                            continue;
-                        }
-
-                        var amount = contractService.OverrideAmount ?? unitService.MonthlyPrice;
-                        var serviceItem = new InvoiceItem
+                        // Only add Fixed Monthly Services (WiFi, Trash, Parking, etc.)
+                        invoice.Items.Add(new InvoiceItem
                         {
                             Id = Guid.NewGuid(),
                             TenantId = tenantId,
                             InvoiceId = invoice.Id,
-                            ItemType = "UNIT_SERVICE",
-                            Description = unitService.Name,
-                            Amount = amount,
-                            UnitServiceId = unitService.Id
-                        };
-
-                        invoice.Items.Add(serviceItem);
-                        runningTotal += serviceItem.Amount;
-                        itemCount++;
-                        _logger.LogInformation("✅ Added Service: {Name} - {Amount:C}", unitService.Name, amount);
+                            ItemType = "SERVICE",
+                            Description = service.Name,
+                            Amount = service.MonthlyPrice
+                        });
+                        runningTotal += service.MonthlyPrice;
                     }
                 }
 
-                // Finalize
+                // --- SECTION C: METERED UTILITIES (CONSUMPTION-BASED) ---
+                // We look for any metered service assigned to this unit
+                var meteredServiceIds = contract.Unit?.UnitServices
+                    .Where(s => s.IsMetered)
+                    .Select(s => s.Id).ToList();
+
+                if (meteredServiceIds != null && meteredServiceIds.Any())
+                {
+                    foreach (var serviceId in meteredServiceIds)
+                    {
+                        var serviceDetail = contract.Unit!.UnitServices.First(s => s.Id == serviceId);
+
+                        // Find the latest UNBILLED reading
+                        var reading = await _context.MeterReadings
+                            .Where(m => m.UnitServiceId == serviceId && !m.IsBilled)
+                            .OrderByDescending(m => m.ReadingDate)
+                            .FirstOrDefaultAsync();
+
+                        if (reading != null)
+                        {
+                            decimal consumption = (decimal)reading.Consumption;
+                            decimal amount = consumption * serviceDetail.MonthlyPrice; // Price acts as the Rate/kWh
+
+                            invoice.Items.Add(new InvoiceItem
+                            {
+                                Id = Guid.NewGuid(),
+                                TenantId = tenantId,
+                                InvoiceId = invoice.Id,
+                                ItemType = "UTILITY",
+                                Description = $"{serviceDetail.Name} Usage: {reading.PreviousValue:N2} to {reading.CurrentValue:N2} ({consumption:N2} units)",
+                                Amount = amount
+                            });
+                            runningTotal += amount;
+
+                            // Mark as billed so it isn't picked up by next cycle
+                            reading.IsBilled = true;
+                        }
+                    }
+                }
+
+                // --- SECTION D: CONTRACT ADD-ONS ---
+                if (contract.AddOns != null)
+                {
+                    foreach (var addon in contract.AddOns)
+                    {
+                        bool isRecurring = string.Equals(addon.ChargeDefinition?.ChargeType, "RECURRING", StringComparison.OrdinalIgnoreCase);
+                        bool isOneTime = string.Equals(addon.ChargeDefinition?.ChargeType, "ONE_TIME", StringComparison.OrdinalIgnoreCase);
+
+                        if (isRecurring || (isOneTime && !addon.IsProcessed))
+                        {
+                            invoice.Items.Add(new InvoiceItem
+                            {
+                                Id = Guid.NewGuid(),
+                                TenantId = tenantId,
+                                InvoiceId = invoice.Id,
+                                ItemType = "ADDON",
+                                Description = addon.ChargeDefinition!.Name,
+                                Amount = addon.AgreedAmount
+                            });
+                            runningTotal += addon.AgreedAmount;
+                            if (isOneTime) addon.IsProcessed = true;
+                        }
+                    }
+                }
+
                 invoice.TotalAmount = runningTotal;
-
-                _logger.LogInformation("--- Summary --- Items Created: {ItemCount}, Total: {Total:C}", itemCount, invoice.TotalAmount);
-
-                // Save
-                _logger.LogInformation("--- Saving to Database ---");
                 _context.Invoices.Add(invoice);
 
-                var savedCount = await _context.SaveChangesAsync();
-                _logger.LogInformation("SaveChangesAsync: {Count} rows affected", savedCount);
-
+                await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-                _logger.LogInformation("Transaction committed successfully");
 
-                // Verification check
-                var savedInvoice = await _context.Invoices
-                    .Include(i => i.Items)
-                    .FirstOrDefaultAsync(i => i.Id == invoice.Id);
-
-                if (savedInvoice != null)
-                {
-                    _logger.LogInformation("✅ Verification: Invoice verified in DB with {ItemCount} items.", savedInvoice.Items.Count);
-                }
-                else
-                {
-                    _logger.LogError("❌ Verification Failed: Invoice not found in DB after commit!");
-                }
-
-                _logger.LogInformation("========== GENERATION COMPLETE ==========");
                 return invoice;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ EXCEPTION during invoice generation for Contract {ContractId}", contractId);
+                _logger.LogError(ex, "Failed to generate invoice for contract {Id}", contractId);
                 await transaction.RollbackAsync();
                 throw;
             }
         }
-
     }
 }

@@ -1,0 +1,201 @@
+﻿@page
+@using MyRoomService.Domain.Entities
+@model MyRoomService.Pages.Occupants.ArchivedOccupantsModel
+@{
+    ViewData["Title"] = "Archived Occupants";
+}
+
+<div class="container-fluid py-4 px-lg-5">
+
+    @if (TempData["StatusMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> @TempData["StatusMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <h2 class="fw-bold mb-0 text-secondary"><i class="bi bi-archive me-2"></i>Archived Directory</h2>
+            <p class="text-muted mb-0">Historical records of former tenants</p>
+        </div>
+        <a asp-page="./Index" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm">
+            <i class="bi bi-arrow-left me-2"></i>Back to Active
+        </a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm rounded-4 h-100 bg-light">
+                <div class="card-body d-flex align-items-center">
+                    <div class="input-group">
+                        <span class="input-group-text bg-transparent border-end-0 text-muted">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text"
+                               id="searchInput"
+                               value="@Model.SearchTerm"
+                               class="form-control bg-transparent border-start-0 ps-0"
+                               placeholder="Search archived records..."
+                               autocomplete="off">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="table-responsive" id="occupantsTableContainer">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-secondary">
+                    <tr>
+                        <th class="ps-4 rounded-start-top border-0">Occupant</th>
+                        <th class="border-0">Contact Info</th>
+                        <th class="border-0">Last Known Unit</th>
+                        <th class="border-0">Status</th>
+                        <th class="text-end pe-4 rounded-end-top border-0">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    @if (!Model.Occupants.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                                No archived occupants found.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var occupant in Model.Occupants)
+                        {
+                            var latestContract = occupant.Contracts?.OrderByDescending(c => c.StartDate).FirstOrDefault();
+
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle me-3 bg-secondary text-white">
+                                            @occupant.FirstName?.FirstOrDefault()@occupant.LastName?.FirstOrDefault()
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">@occupant.FirstName @occupant.LastName</div>
+                                            <div class="text-muted small">ID: @occupant.Id.ToString().Substring(0, 8)</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="text-dark small"><i class="bi bi-envelope me-2 text-muted"></i>@occupant.Email</div>
+                                    <div class="text-dark small"><i class="bi bi-telephone me-2 text-muted"></i>@(occupant.Phone ?? "N/A")</div>
+                                </td>
+                                <td>
+                                    @if (latestContract?.Unit != null)
+                                    {
+                                        <span class="fw-semibold text-dark">@latestContract.Unit.UnitNumber</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted fst-italic">None</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-3 py-2">
+                                        Archived
+                                    </span>
+                                </td>
+                                <td class="pe-4 text-end">
+                                    <div class="btn-group shadow-sm rounded-pill overflow-hidden">
+                                        <a asp-page="./Details" asp-route-id="@occupant.Id" class="btn btn-white btn-sm px-3 border-end" title="View Profile">
+                                            <i class="bi bi-eye text-primary"></i>
+                                        </a>
+
+                                        <form method="post" asp-page-handler="Restore" asp-route-id="@occupant.Id" class="d-inline" onsubmit="return confirm('Are you sure you want to restore this occupant to the active directory?');">
+                                            <button type="submit" class="btn btn-white btn-sm px-3" title="Restore to Active">
+                                                <i class="bi bi-arrow-counterclockwise text-success"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.85rem;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .btn-white {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+    }
+
+        .btn-white:hover {
+            background-color: #f8f9fa;
+        }
+</style>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let debounceTimer;
+            const searchInput = document.getElementById('searchInput');
+            const tableContainer = document.getElementById('occupantsTableContainer');
+
+            if (searchInput && tableContainer) {
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(debounceTimer);
+                    const searchTerm = this.value;
+
+                    debounceTimer = setTimeout(() => {
+                        const url = new URL(window.location.href);
+                        if (searchTerm) {
+                            url.searchParams.set('SearchTerm', searchTerm);
+                        } else {
+                            url.searchParams.delete('SearchTerm');
+                        }
+
+                        fetch(url)
+                            .then(response => response.text())
+                            .then(html => {
+                                const parser = new DOMParser();
+                                const doc = parser.parseFromString(html, 'text/html');
+                                const newTable = doc.getElementById('occupantsTableContainer');
+                                if (newTable) {
+                                    tableContainer.innerHTML = newTable.innerHTML;
+                                }
+                                window.history.replaceState({}, '', url);
+                            });
+                    }, 400);
+                });
+
+                const val = searchInput.value;
+                searchInput.value = '';
+                searchInput.value = val;
+            }
+        });
+    </script>
+}

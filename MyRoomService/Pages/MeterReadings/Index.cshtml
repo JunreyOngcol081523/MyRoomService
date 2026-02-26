@@ -1,4 +1,135 @@
 ﻿@page
 @model MyRoomService.Pages.MeterReadings.IndexModel
 @{
+    ViewData["Title"] = "Meter Entry";
+}
+
+<div class="container-fluid py-4 px-lg-5">
+    <div class="mb-4">
+        <h2 class="fw-bold text-dark"><i class="bi bi-speedometer2 me-2"></i>Batch Meter Entry</h2>
+    </div>
+
+    @* Filter Bar *@
+    <form method="get" id="filterForm" class="card border-0 shadow-sm rounded-4 mb-4 bg-light p-3">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select asp-for="BuildingId" asp-items="Model.Buildings" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Select Building --</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select asp-for="UtilityName" asp-items="Model.UtilityTypes" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Select Utility --</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <input type="text" asp-for="SearchUnit" id="unitSearch" class="form-control" placeholder="Search Unit Number (Rule 4)..." />
+            </div>
+        </div>
+    </form>
+
+    @if (Model.Entries.Any())
+    {
+        <form method="post" asp-page-handler="SaveBatch" id="batchForm">
+            <input type="hidden" asp-for="BuildingId" /><input type="hidden" asp-for="UtilityName" />
+
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white border-bottom p-4 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        <label class="fw-bold small text-muted">Reading Date:</label>
+                        <input type="date" asp-for="ReadingDate" class="form-control form-control-sm" style="width:160px" />
+                    </div>
+                    @* Rule 3: Confirmation Modal Trigger *@
+                    <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#confirmSaveModal">
+                        <i class="bi bi-check-all me-2"></i>Save All Readings
+                    </button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="ps-4">Unit</th>
+                                <th>Meter S/N</th>
+                                <th class="text-end">Previous</th>
+                                <th class="text-center" style="width:180px">Current Reading</th>
+                                <th class="text-center">Reset?</th>
+                                <th class="text-end pe-4">Consumption</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Entries.Count; i++)
+                            {
+                                <tr class="meter-row">
+                                    <td class="ps-4 fw-bold">
+                                        @Model.Entries[i].UnitNumber
+                                        <input type="hidden" asp-for="Entries[i].UnitServiceId" />
+                                        <input type="hidden" asp-for="Entries[i].PreviousValue" class="prev-val" />
+                                    </td>
+                                    <td class="small text-muted font-monospace">@Model.Entries[i].MeterNumber</td>
+                                    <td class="text-end text-muted">@Model.Entries[i].PreviousValue.ToString("N2")</td>
+                                    <td>
+                                        <input type="number" step="any" asp-for="Entries[i].CurrentValue" class="form-control form-control-sm text-center curr-val" placeholder="0.00" />
+                                    </td>
+                                    <td class="text-center">
+                                        <input type="checkbox" asp-for="Entries[i].IsReset" class="form-check-input reset-chk" />
+                                    </td>
+                                    <td class="text-end pe-4 fw-bold consumption-text">--</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </form>
+    }
+</div>
+
+@* Rule 3: Confirmation Modal *@
+<div class="modal fade" id="confirmSaveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-body p-4 text-center">
+                <i class="bi bi-question-circle text-primary display-4 mb-3 d-block"></i>
+                <h4 class="fw-bold">Save Batch Readings?</h4>
+                <p class="text-muted">This will record usage and prepare consumption data for the next billing cycle.</p>
+                <div class="d-flex gap-2 justify-content-center mt-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4" onclick="document.getElementById('batchForm').submit()">Confirm Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Rule 4: Debounced Search
+        let timer;
+        document.getElementById('unitSearch').addEventListener('input', e => {
+            clearTimeout(timer);
+            timer = setTimeout(() => document.getElementById('filterForm').submit(), 500);
+        });
+
+        // Real-time Consumption Logic
+        document.querySelectorAll('.meter-row').forEach(row => {
+            const prev = parseFloat(row.querySelector('.prev-val').value);
+            const input = row.querySelector('.curr-val');
+            const chk = row.querySelector('.reset-chk');
+            const display = row.querySelector('.consumption-text');
+
+            const calc = () => {
+                const curr = parseFloat(input.value);
+                if (isNaN(curr)) { display.innerText = '--'; return; }
+                if (chk.checked) { display.innerText = '0.00 (Reset)'; display.className='text-end pe-4 fw-bold text-info'; return; }
+
+                const cons = curr - prev;
+                display.innerText = cons.toFixed(2);
+                display.className = cons < 0 ? 'text-end pe-4 fw-bold text-danger' : 'text-end pe-4 fw-bold text-success';
+            };
+
+            input.addEventListener('input', calc);
+            chk.addEventListener('change', calc);
+        });
+    </script>
 }

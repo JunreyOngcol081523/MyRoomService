@@ -29,5 +29,6 @@ namespace MyRoomService.Domain.Entities
 
         // Useful for the Landlord UI to see who recorded the reading
         public string? Notes { get; set; }
+        public bool IsReset { get; set; } = false;
     }
 }
