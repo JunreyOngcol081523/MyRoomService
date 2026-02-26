@@ -13,15 +13,22 @@
                     <h4 class="mb-0">Add New Unit to <span class="text-primary">@Model.BuildingName</span></h4>
                 </div>
                 <div class="card-body p-4">
+
+                    @if (!ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger shadow-sm rounded-4">
+                            <div asp-validation-summary="All" class="text-danger mb-0"></div>
+                        </div>
+                    }
+
                     <form method="post" id="unitForm">
-                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
                         <input type="hidden" asp-for="BuildingId" />
 
                         <h5 class="fw-bold mb-3 text-secondary border-bottom pb-2">Unit Details</h5>
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
                                 <label asp-for="Unit.UnitNumber" class="form-label fw-semibold">Unit Number / Name</label>
-                                <input asp-for="Unit.UnitNumber" class="form-control" placeholder="e.g. Room 101" />
+                                <input asp-for="Unit.UnitNumber" class="form-control" placeholder="e.g. Room 101" required />
                                 <span asp-validation-for="Unit.UnitNumber" class="text-danger"></span>
                             </div>
 
@@ -47,8 +54,8 @@
                             <div class="col-md-6">
                                 <label asp-for="Unit.DefaultRate" class="form-label fw-semibold">Default Rate (Monthly)</label>
                                 <div class="input-group">
-                                    <span class="input-group-text">$</span>
-                                    <input asp-for="Unit.DefaultRate" class="form-control" type="number" step="0.01" />
+                                    <span class="input-group-text">₱</span>
+                                    <input asp-for="Unit.DefaultRate" class="form-control" type="number" step="0.01" required />
                                 </div>
                                 <span asp-validation-for="Unit.DefaultRate" class="text-danger"></span>
                             </div>
@@ -106,7 +113,7 @@
     </div>
 </div>
 
-@* --- UPDATED UNIT SERVICE MODAL --- *@
+@* --- UPDATED UNIT SERVICE MODAL WITH DATALIST --- *@
 <div class="modal fade" id="serviceModal" tabindex="-1" aria-labelledby="serviceModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -115,9 +122,21 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+
+                @* 🚨 THE DATALIST AUTOSUGGEST *@
+                <datalist id="serviceNameSuggestions">
+                    @if (Model.CommonServiceNames != null)
+                    {
+                        foreach (var name in Model.CommonServiceNames)
+                        {
+                            <option value="@name" />
+                        }
+                    }
+                </datalist>
+
                 <div class="mb-3">
                     <label class="form-label fw-semibold text-muted small text-uppercase">Service Name</label>
-                    <input type="text" id="modalServiceName" class="form-control border-secondary" placeholder="e.g. Electricity, Water, or LPG" />
+                    <input type="text" id="modalServiceName" list="serviceNameSuggestions" class="form-control border-secondary" placeholder="e.g. Electricity, Water, or LPG" autocomplete="off" />
                 </div>
 
                 <div class="mb-3">
@@ -136,7 +155,7 @@
                 </div>
 
                 <div class="mb-3">
-                    <label id="priceLabel" class="form-label fw-semibold text-primary small text-uppercase">Monthly Price ($)</label>
+                    <label id="priceLabel" class="form-label fw-semibold text-primary small text-uppercase">Monthly Price (₱)</label>
                     <input type="number" id="modalMonthlyPrice" step="0.01" class="form-control border-primary shadow-sm fw-bold" placeholder="0.00" />
                     <div id="priceHelp" class="form-text small text-info">Flat amount charged every month.</div>
                 </div>
@@ -163,14 +182,24 @@
         $(document).ready(function () {
             let serviceIndex = 0;
 
-            // --- NEW: UI Toggle Logic for the Modal ---
+            // 🚨 JAVASCRIPT TITLE CASE FORMATTER
+            function toTitleCase(str) {
+                return str.replace(
+                    /\w\S*/g,
+                    function(txt) {
+                        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+                    }
+                );
+            }
+
+            // --- UI Toggle Logic for the Modal ---
             $('input[name="billingType"]').change(function() {
                 if ($('#typeMetered').is(':checked')) {
-                    $('#priceLabel').text("Rate per Unit ($)");
+                    $('#priceLabel').text("Rate per Unit (₱)");
                     $('#priceHelp').text("The cost per kWh, Cubic Meter, etc.");
                     $('#meterNumberSection').removeClass('d-none');
                 } else {
-                    $('#priceLabel').text("Monthly Price ($)");
+                    $('#priceLabel').text("Monthly Price (₱)");
                     $('#priceHelp').text("Flat amount charged every month.");
                     $('#meterNumberSection').addClass('d-none');
                 }
@@ -178,7 +207,10 @@
 
             // --- Add Service Logic ---
             $('#btnAddServiceToList').click(function () {
-                const name = $('#modalServiceName').val().trim();
+                // Apply Title Case styling immediately upon getting the value
+                const rawName = $('#modalServiceName').val().trim();
+                const name = toTitleCase(rawName);
+
                 const price = parseFloat($('#modalMonthlyPrice').val());
                 const isMetered = $('#typeMetered').is(':checked');
                 const meterNumber = $('#modalMeterNumber').val().trim();
@@ -190,23 +222,25 @@
 
                 $('#emptyStateRow').hide();
 
-                // Status badges for the table view
                 const typeBadge = isMetered
                     ? '<span class="badge bg-info-soft text-info"><i class="bi bi-speedometer2"></i> Metered</span>'
                     : '<span class="badge bg-light text-muted">Fixed</span>';
 
-                // Generate row with hidden inputs mapping to UnitService properties
+                // 🚨 SURGICAL BOOLEAN FIX: Using the strict hidden checkbox pattern
                 const tr = $(`
                     <tr>
                         <td class="fw-bold text-dark">
                             ${name} ${typeBadge}
                             <div class="small text-muted">${isMetered ? 'Meter: ' + (meterNumber || 'N/A') : ''}</div>
+
                             <input type="hidden" name="SelectedServices[${serviceIndex}].Name" value="${name}" />
-                            <input type="hidden" name="SelectedServices[${serviceIndex}].IsMetered" value="${isMetered}" />
                             <input type="hidden" name="SelectedServices[${serviceIndex}].MeterNumber" value="${meterNumber}" />
+
+                            <input type="checkbox" name="SelectedServices[${serviceIndex}].IsMetered" value="true" ${isMetered ? 'checked' : ''} style="display:none;" />
+                            <input type="hidden" name="SelectedServices[${serviceIndex}].IsMetered" value="false" />
                         </td>
                         <td class="text-end fw-bold text-primary">
-                            $${price.toFixed(2)}
+                            ₱${price.toFixed(2)}
                             <input type="hidden" name="SelectedServices[${serviceIndex}].MonthlyPrice" value="${price}" />
                         </td>
                         <td class="text-center">
@@ -244,11 +278,24 @@
                 $('#servicesTable tbody tr').not('#emptyStateRow').each(function(index) {
                     $(this).find('input[name*="Name"]').attr('name', `SelectedServices[${index}].Name`);
                     $(this).find('input[name*="MonthlyPrice"]').attr('name', `SelectedServices[${index}].MonthlyPrice`);
-                    $(this).find('input[name*="IsMetered"]').attr('name', `SelectedServices[${index}].IsMetered`);
+
+                    // Update the array index for both parts of the boolean hack
+                    $(this).find('input[type="checkbox"][name*="IsMetered"]').attr('name', `SelectedServices[${index}].IsMetered`);
+                    $(this).find('input[type="hidden"][name*="IsMetered"]').attr('name', `SelectedServices[${index}].IsMetered`);
+
                     $(this).find('input[name*="MeterNumber"]').attr('name', `SelectedServices[${index}].MeterNumber`);
                 });
                 serviceIndex = $('#servicesTable tbody tr').not('#emptyStateRow').length;
             }
         });
     </script>
+
+    <style>
+        .bg-info-soft {
+            background-color: #e1f5fe;
+            color: #0288d1;
+            border: 1px solid #b3e5fc;
+            padding: 0.35em 0.65em;
+        }
+    </style>
 }

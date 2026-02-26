@@ -26,7 +26,9 @@ namespace MyRoomService.Pages.MeterReadings
         [BindProperty(SupportsGet = true)] public string? UtilityName { get; set; }
         [BindProperty(SupportsGet = true)] public string? SearchUnit { get; set; }
         public SelectList Buildings { get; set; } = default!;
-        public SelectList UtilityTypes { get; set; } = default!;
+
+        // --- NEW: Dynamic Pill Buttons List ---
+        public List<string> AvailableUtilities { get; set; } = new();
 
         // --- Batch Data ---
         [BindProperty] public DateTime ReadingDate { get; set; } = DateTime.Today;
@@ -43,8 +45,9 @@ namespace MyRoomService.Pages.MeterReadings
             public string UnitNumber { get; set; } = "";
             public string? MeterNumber { get; set; }
             public double PreviousValue { get; set; }
+            public DateTime? PreviousDate { get; set; } // NEW: For 14-day tracking
             public double? CurrentValue { get; set; }
-            public bool IsReset { get; set; } // The "Gap Year" handler
+            public bool IsReset { get; set; }
         }
 
         public async Task OnGetAsync()
@@ -52,45 +55,62 @@ namespace MyRoomService.Pages.MeterReadings
             // Rule 2: Breadcrumbs
             ViewData["Breadcrumbs"] = new List<(string Title, string Url)> { ("Utilities", "/MeterReadings"), ("Batch Entry", "") };
 
-            // Rule 1: Try-Catch
+            // Rule 1: Try-Catch wrapper
             try
             {
                 var tenantId = _tenantService.GetTenantId();
 
-                // Load Filter Options
+                // Load Building Filter
                 var bldgs = await _context.Buildings.Where(b => b.TenantId == tenantId).OrderBy(b => b.Name).ToListAsync();
                 Buildings = new SelectList(bldgs, "Id", "Name");
 
-                var utils = await _context.UnitServices.Where(s => s.TenantId == tenantId && s.IsMetered)
-                                .Select(s => s.Name).Distinct().ToListAsync();
-                UtilityTypes = new SelectList(utils);
-
-                if (BuildingId.HasValue && !string.IsNullOrEmpty(UtilityName))
+                if (BuildingId.HasValue)
                 {
-                    var query = _context.UnitServices
+                    // Fetch unique metered utilities for THIS building only
+                    AvailableUtilities = await _context.UnitServices
                         .Include(s => s.Unit)
-                        .Where(s => s.TenantId == tenantId && s.IsMetered && s.Name == UtilityName && s.Unit!.BuildingId == BuildingId);
+                        .Where(s => s.TenantId == tenantId && s.IsMetered && s.Unit!.BuildingId == BuildingId)
+                        .Select(s => s.Name)
+                        .Distinct()
+                        .OrderBy(n => n)
+                        .ToListAsync();
 
-                    if (!string.IsNullOrWhiteSpace(SearchUnit))
-                        query = query.Where(s => s.Unit!.UnitNumber.Contains(SearchUnit));
-
-                    // Rule 5: Pagination
-                    int count = await query.CountAsync();
-                    TotalPages = (int)Math.Ceiling(count / (double)PageSize);
-                    var services = await query.OrderBy(s => s.Unit!.UnitNumber).Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToListAsync();
-
-                    foreach (var s in services)
+                    // Auto-select the first utility if none is selected so the grid isn't empty
+                    if (string.IsNullOrEmpty(UtilityName) && AvailableUtilities.Any())
                     {
-                        var lastReading = await _context.MeterReadings
-                            .Where(m => m.UnitServiceId == s.Id).OrderByDescending(m => m.ReadingDate).FirstOrDefaultAsync();
+                        UtilityName = AvailableUtilities.First();
+                    }
 
-                        Entries.Add(new MeterEntryItem
+                    if (!string.IsNullOrEmpty(UtilityName))
+                    {
+                        var query = _context.UnitServices
+                            .Include(s => s.Unit)
+                            .Where(s => s.TenantId == tenantId && s.IsMetered && s.Name == UtilityName && s.Unit!.BuildingId == BuildingId);
+
+                        if (!string.IsNullOrWhiteSpace(SearchUnit))
+                            query = query.Where(s => s.Unit!.UnitNumber.Contains(SearchUnit));
+
+                        // Rule 5: Pagination
+                        int count = await query.CountAsync();
+                        TotalPages = (int)Math.Ceiling(count / (double)PageSize);
+                        var services = await query.OrderBy(s => s.Unit!.UnitNumber).Skip((CurrentPage - 1) * PageSize).Take(PageSize).ToListAsync();
+
+                        foreach (var s in services)
                         {
-                            UnitServiceId = s.Id,
-                            UnitNumber = s.Unit!.UnitNumber,
-                            MeterNumber = s.MeterNumber,
-                            PreviousValue = lastReading?.CurrentValue ?? 0
-                        });
+                            var lastReading = await _context.MeterReadings
+                                .Where(m => m.UnitServiceId == s.Id)
+                                .OrderByDescending(m => m.ReadingDate)
+                                .FirstOrDefaultAsync();
+
+                            Entries.Add(new MeterEntryItem
+                            {
+                                UnitServiceId = s.Id,
+                                UnitNumber = s.Unit!.UnitNumber,
+                                MeterNumber = s.MeterNumber,
+                                PreviousValue = lastReading?.CurrentValue ?? 0,
+                                PreviousDate = lastReading?.ReadingDate // Pass the date to the frontend
+                            });
+                        }
                     }
                 }
             }
@@ -99,10 +119,11 @@ namespace MyRoomService.Pages.MeterReadings
 
         public async Task<IActionResult> OnPostSaveBatchAsync()
         {
-            // Rule 1: Try-Catch
             try
             {
                 var tenantId = _tenantService.GetTenantId();
+                int saveCount = 0;
+
                 foreach (var entry in Entries.Where(e => e.CurrentValue.HasValue))
                 {
                     var reading = new MeterReading
@@ -113,13 +134,19 @@ namespace MyRoomService.Pages.MeterReadings
                         ReadingDate = ReadingDate,
                         PreviousValue = entry.PreviousValue,
                         CurrentValue = entry.CurrentValue!.Value,
-                        IsBilled = entry.IsReset, // If reset, mark as billed so it's not charged
+                        IsBilled = entry.IsReset,
                         Notes = entry.IsReset ? "Meter Reset/Baseline" : "Monthly Reading"
                     };
                     _context.MeterReadings.Add(reading);
+                    saveCount++;
                 }
-                await _context.SaveChangesAsync();
-                TempData["StatusMessage"] = "Batch readings saved successfully.";
+
+                if (saveCount > 0)
+                {
+                    await _context.SaveChangesAsync();
+                    TempData["StatusMessage"] = $"Successfully saved {saveCount} readings.";
+                }
+
                 return RedirectToPage(new { BuildingId, UtilityName });
             }
             catch (Exception ex)

@@ -6,7 +6,6 @@
 }
 
 <div class="container-fluid py-4">
-    @* ... Header Section (Unchanged) ... *@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="fw-bold mb-0">Edit Unit @Model.Unit.UnitNumber</h2>
@@ -15,13 +14,19 @@
         <a asp-page="/Buildings/ManageBuilding" asp-route-id="@Model.Unit.BuildingId" class="btn btn-light rounded-pill border">Back to Building</a>
     </div>
 
+    @if (!ModelState.IsValid)
+    {
+        <div class="alert alert-danger shadow-sm rounded-4">
+            <div asp-validation-summary="All" class="text-danger mb-0"></div>
+        </div>
+    }
+
     <form method="post" id="unitForm">
         <input type="hidden" asp-for="Unit.Id" />
         <input type="hidden" asp-for="Unit.BuildingId" />
-        <input type="hidden" asp-for="Unit.TenantId" />
 
         <div class="row g-4">
-            @* --- Left Column: Unit Details (Unchanged) --- *@
+            @* --- Left Column: Unit Details --- *@
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
@@ -66,12 +71,12 @@
                 </div>
             </div>
 
-            @* --- Right Column: Unit Services & Add-ons (Modified) --- *@
+            @* --- Right Column: Unit Services & Add-ons --- *@
             <div class="col-lg-6">
                 <div class="card border-0 shadow-sm rounded-4 h-100">
                     <div class="card-header bg-white border-bottom-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
                         <h5 class="fw-bold mb-0"><i class="bi bi-tags me-2"></i>Unit Services & Add-ons</h5>
-                        <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#addServiceModal">
+                        <button type="button" id="btnOpenAddModal" class="btn btn-sm btn-outline-info rounded-pill px-3 shadow-sm">
                             <i class="bi bi-plus-lg me-1"></i> Add Service
                         </button>
                     </div>
@@ -81,8 +86,8 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Service Name</th>
-                                        <th class="text-end">Monthly Price/Rate</th>
-                                        <th class="text-center" style="width: 80px;">Action</th>
+                                        <th class="text-end">Price/Rate</th>
+                                        <th class="text-center" style="width: 100px;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -107,18 +112,31 @@
     </form>
 </div>
 
-@* --- MODIFIED ADD SERVICE MODAL --- *@
+@* --- SURGICAL ADD/EDIT SERVICE MODAL --- *@
 <div class="modal fade" id="addServiceModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark">Add Unit Service</h5>
+                <h5 class="modal-title fw-bold text-dark" id="modalTitle">Add Unit Service</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <input type="hidden" id="modalEditIndex" value="-1" />
+
+                @* 🚨 THE DATALIST AUTOSUGGEST *@
+                <datalist id="serviceNameSuggestions">
+                    @if (Model.CommonServiceNames != null)
+                    {
+                        foreach (var name in Model.CommonServiceNames)
+                        {
+                            <option value="@name" />
+                        }
+                    }
+                </datalist>
+
                 <div class="mb-3">
                     <label class="form-label fw-semibold text-muted small text-uppercase">Service Name</label>
-                    <input type="text" id="modalCustomName" class="form-control border-secondary" placeholder="e.g. Electricity, Water, Wi-Fi" />
+                    <input type="text" id="modalCustomName" list="serviceNameSuggestions" class="form-control border-secondary" placeholder="e.g. Electricity, Water, Wi-Fi" autocomplete="off" />
                 </div>
 
                 <div class="mb-3">
@@ -145,7 +163,7 @@
             </div>
             <div class="modal-footer border-top-0 pt-0">
                 <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="btnAddServiceToList" class="btn btn-primary px-4 shadow-sm">Add to Unit</button>
+                <button type="button" id="btnSaveServiceToList" class="btn btn-primary px-4 shadow-sm">Save Service</button>
             </div>
         </div>
     </div>
@@ -156,9 +174,20 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            // This pulls existing services from your EditModel
-            let selectedServices = @Html.Raw(Model.ExistingServicesJson);
+            // 🚨 FIX: Normalize the JSON immediately on load
+            // This handles serialization casing (id vs Id) and sanitizes nulls
+            let rawServices = @Html.Raw(Model.ExistingServicesJson);
+            let selectedServices = rawServices.map(s => ({
+                Id:           s.Id           ?? s.id           ?? '',
+                Name:         s.Name         ?? s.name         ?? '',
+                MonthlyPrice: s.MonthlyPrice ?? s.monthlyPrice ?? 0,
+                IsMetered:    s.IsMetered    ?? s.isMetered    ?? false,
+                MeterNumber:  s.MeterNumber  ?? s.meterNumber  ?? ''
+            }));
 
+            const serviceModal = new bootstrap.Modal(document.getElementById('addServiceModal'));
+            const modalTitle = document.getElementById("modalTitle");
+            const editIndexInput = document.getElementById("modalEditIndex");
             const customNameInput = document.getElementById("modalCustomName");
             const priceInput = document.getElementById("modalPrice");
             const meterNumberInput = document.getElementById("modalMeterNumber");
@@ -168,7 +197,15 @@
             const priceHelp = document.getElementById("priceHelp");
             const meterSection = document.getElementById("meterNumberSection");
 
-            // --- Modal UI Toggle Logic ---
+            function toTitleCase(str) {
+                return str.replace(
+                    /\w\S*/g,
+                    function(txt) {
+                        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+                    }
+                );
+            }
+
             function updateModalUI() {
                 if (radioMetered.checked) {
                     priceLabel.innerText = "Rate per Unit (₱)";
@@ -200,12 +237,13 @@
                     document.getElementById("servicesTable").style.display = "table";
 
                     selectedServices.forEach((service, index) => {
-                        const isMetered = service.IsMetered === true || service.IsMetered === "true";
+                        // Notice how clean this is now! No more `service.Id || service.id`
+                        const isMetered = String(service.IsMetered).toLowerCase() === "true";
+
                         const typeBadge = isMetered
                             ? '<span class="badge bg-info-soft text-info small ms-2"><i class="bi bi-speedometer2"></i> Metered</span>'
                             : '';
 
-                        // Render visible table row
                         const tr = document.createElement("tr");
                         tr.innerHTML = `
                             <td>
@@ -214,55 +252,93 @@
                             </td>
                             <td class="text-end text-primary fw-bold">₱${parseFloat(service.MonthlyPrice).toFixed(2)}</td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle" onclick="removeService(${index})">
+                                <button type="button" class="btn btn-sm btn-outline-primary border-0 rounded-circle me-1" onclick="openEditModal(${index})" title="Edit Service">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger border-0 rounded-circle" onclick="removeService(${index})" title="Remove Service">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
                         `;
                         tbody.appendChild(tr);
 
-                        // Render hidden inputs for ASP.NET Core Model Binding
                         hiddenContainer.innerHTML += `
+                            <input type="hidden" name="SelectedServices[${index}].Id" value="${service.Id}" />
                             <input type="hidden" name="SelectedServices[${index}].Name" value="${service.Name}" />
                             <input type="hidden" name="SelectedServices[${index}].MonthlyPrice" value="${service.MonthlyPrice}" />
-                            <input type="hidden" name="SelectedServices[${index}].IsMetered" value="${isMetered}" />
-                            <input type="hidden" name="SelectedServices[${index}].MeterNumber" value="${service.MeterNumber || ''}" />
+                            <input type="hidden" name="SelectedServices[${index}].MeterNumber" value="${service.MeterNumber}" />
+
+                            <input type="checkbox" name="SelectedServices[${index}].IsMetered" value="true" ${isMetered ? 'checked' : ''} style="display:none;" />
+                            <input type="hidden" name="SelectedServices[${index}].IsMetered" value="false" />
                         `;
                     });
                 }
             }
 
-            // Add Service Button Click
-            document.getElementById("btnAddServiceToList").addEventListener("click", function () {
-                const name = customNameInput.value.trim();
+            document.getElementById("btnOpenAddModal").addEventListener("click", function () {
+                modalTitle.innerText = "Add Unit Service";
+                editIndexInput.value = "-1";
+                customNameInput.value = "";
+                priceInput.value = "";
+                meterNumberInput.value = "";
+                radioFixed.checked = true;
+                updateModalUI();
+                serviceModal.show();
+            });
+
+            window.openEditModal = function(index) {
+                const service = selectedServices[index];
+
+                modalTitle.innerText = "Edit Unit Service";
+                editIndexInput.value = index;
+
+                // Clean references here too
+                customNameInput.value = service.Name;
+                priceInput.value = service.MonthlyPrice;
+                meterNumberInput.value = service.MeterNumber;
+
+                const isMetered = String(service.IsMetered).toLowerCase() === "true";
+                if (isMetered) {
+                    radioMetered.checked = true;
+                } else {
+                    radioFixed.checked = true;
+                }
+
+                updateModalUI();
+                serviceModal.show();
+            };
+
+            document.getElementById("btnSaveServiceToList").addEventListener("click", function () {
+                const name = toTitleCase(customNameInput.value.trim());
                 const price = parseFloat(priceInput.value);
                 const isMetered = radioMetered.checked;
                 const meterNumber = meterNumberInput.value.trim();
+                const editIndex = parseInt(editIndexInput.value);
 
                 if (!name || isNaN(price)) {
                     alert("Please provide a valid service name and monthly price.");
                     return;
                 }
 
-                selectedServices.push({
+                // 🚨 FIX: Strict ID handling
+                const existingId = (editIndex >= 0) ? (selectedServices[editIndex].Id || '') : '';
+
+                const serviceData = {
+                    Id: existingId,
                     Name: name,
                     MonthlyPrice: price,
                     IsMetered: isMetered,
                     MeterNumber: meterNumber
-                });
+                };
+
+                if (editIndex >= 0) {
+                    selectedServices[editIndex] = serviceData;
+                } else {
+                    selectedServices.push(serviceData);
+                }
 
                 renderTable();
-
-                // Clean up modal
-                customNameInput.value = "";
-                priceInput.value = "";
-                meterNumberInput.value = "";
-                radioFixed.checked = true;
-                updateModalUI();
-
-                const modalEl = document.getElementById('addServiceModal');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                modal.hide();
+                serviceModal.hide();
             });
 
             window.removeService = function(index) {

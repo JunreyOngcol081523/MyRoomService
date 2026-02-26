@@ -1,12 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.CodeAnalysis.Emit;
 using Microsoft.EntityFrameworkCore;
 using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
 using MyRoomService.Infrastructure.Persistence;
-using MyRoomService.Services; // Ensure this matches your namespace
+using MyRoomService.Services;
 
 namespace MyRoomService.Pages.Invoices
 {
@@ -15,23 +14,22 @@ namespace MyRoomService.Pages.Invoices
         private readonly ApplicationDbContext _context;
         private readonly ITenantService _tenantService;
         private readonly IInvoiceService _invoiceService;
+        private readonly ILogger<IndexModel> _logger;
 
-        public IndexModel(ApplicationDbContext context, ITenantService tenantService, IInvoiceService invoiceService)
+        public IndexModel(ApplicationDbContext context, ITenantService tenantService, IInvoiceService invoiceService, ILogger<IndexModel> logger)
         {
             _context = context;
             _tenantService = tenantService;
             _invoiceService = invoiceService;
+            _logger = logger;
         }
 
-        // Your existing properties
         public IList<Invoice> Invoices { get; set; } = default!;
 
         [TempData]
         public string StatusMessage { get; set; } = string.Empty;
 
         // --- FILTER PROPERTIES ---
-        // [BindProperty(SupportsGet = true)] allows these variables to automatically 
-        // catch values from the URL, so you don't have to map them manually!
         [BindProperty(SupportsGet = true)] public string? SearchName { get; set; }
         [BindProperty(SupportsGet = true)] public Guid? BuildingId { get; set; }
         [BindProperty(SupportsGet = true)] public Guid? UnitId { get; set; }
@@ -39,6 +37,7 @@ namespace MyRoomService.Pages.Invoices
         [BindProperty(SupportsGet = true)] public DateTime? StartDate { get; set; }
         [BindProperty(SupportsGet = true)] public DateTime? EndDate { get; set; }
         [BindProperty] public bool AutoPublish { get; set; }
+
         // --- PAGINATION PROPERTIES ---
         [BindProperty(SupportsGet = true)] public int PageIndex { get; set; } = 1;
         [BindProperty(SupportsGet = true)] public int PageSize { get; set; } = 10;
@@ -46,133 +45,188 @@ namespace MyRoomService.Pages.Invoices
         public int TotalCount { get; set; }
 
         // --- DROPDOWNS ---
-        // These hold the list of items for your HTML <select> tags
         public SelectList BuildingOptions { get; set; } = default!;
         public SelectList UnitOptions { get; set; } = default!;
 
+        // --- NEW: BILLING BLOCKER PROPERTIES ---
+        public bool IsBillingBlocked { get; set; }
+        public List<string> PendingMeterUnits { get; set; } = new();
+
         public async Task OnGetAsync()
         {
-            var tenantId = _tenantService.GetTenantId();
-
-            // 1. Load Dropdowns for the filter panel
-            var buildings = await _context.Buildings.Where(b => b.TenantId == tenantId).ToListAsync();
-            BuildingOptions = new SelectList(buildings, "Id", "Name", BuildingId);
-
-            var unitsQuery = _context.Units.Where(u => u.TenantId == tenantId);
-            if (BuildingId.HasValue)
+            // Rule 2: Breadcrumbs
+            ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
             {
-                unitsQuery = unitsQuery.Where(u => u.BuildingId == BuildingId.Value);
-            }
-            var units = await unitsQuery.ToListAsync();
-            UnitOptions = new SelectList(units, "Id", "UnitNumber", UnitId);
+                ("Billing", "/Invoices"),
+                ("Invoice Management", "")
+            };
 
-            // 2. Build the Base Query (THIS IS WHERE YOUR CORRECT LOGIC GOES!)
-            var query = _context.Invoices
-                .Include(i => i.Occupant)
-                .Include(i => i.Contract)
-                    .ThenInclude(c => c.Unit)
-                .Where(i => i.TenantId == tenantId && i.Status != "PAID") // Hides completed invoices!
-                .AsQueryable();
-
-            // 3. Apply Filters Conditionally
-            if (!string.IsNullOrEmpty(SearchName))
+            // Rule 1: Try-Catch wrapping the entire execution
+            try
             {
-                var searchTerm = SearchName.ToLower().Trim();
+                var tenantId = _tenantService.GetTenantId();
+                var today = DateTime.Today;
 
-                // If the user didn't type a wildcard, we automatically wrap it in % 
-                // so it acts like a normal partial search.
-                if (!searchTerm.Contains("%"))
+                // ==========================================
+                // STEP A: EVALUATE BILLING BLOCKER LOGIC
+                // ==========================================
+                var activeContracts = await _context.Contracts
+                    .Include(c => c.Unit).ThenInclude(u => u.UnitServices)
+                    .Where(c => c.TenantId == tenantId && c.Status == ContractStatus.Active)
+                    .ToListAsync();
+
+                foreach (var contract in activeContracts)
                 {
-                    searchTerm = $"%{searchTerm}%";
+                    int daysInMonth = DateTime.DaysInMonth(today.Year, today.Month);
+                    int billingDay = Math.Min(contract.BillingDay, daysInMonth);
+                    var targetDate = new DateTime(today.Year, today.Month, billingDay);
+
+                    if (today >= targetDate)
+                    {
+                        var alreadyBilled = await _context.Invoices.AnyAsync(i =>
+                            i.ContractId == contract.Id &&
+                            i.InvoiceDate.Month == today.Month &&
+                            i.InvoiceDate.Year == today.Year &&
+                            i.Status != "VOID");
+
+                        if (!alreadyBilled)
+                        {
+                            var meteredServices = contract.Unit?.UnitServices?.Where(us => us.IsMetered).ToList() ?? new List<UnitService>();
+
+                            foreach (var service in meteredServices)
+                            {
+                                // Look for an UNBILLED reading for this specific utility
+                                var hasUnbilledReading = await _context.MeterReadings
+                                    .AnyAsync(mr => mr.UnitServiceId == service.Id && !mr.IsBilled);
+
+                                if (!hasUnbilledReading)
+                                {
+                                    IsBillingBlocked = true;
+                                    PendingMeterUnits.Add($"Unit {contract.Unit!.UnitNumber} ({service.Name})");
+                                }
+                            }
+                        }
+                    }
                 }
 
-                // EF.Functions.Like tells the database to evaluate the % and _ symbols as wildcards!
-                query = query.Where(i =>
-                    i.Occupant != null &&
-                    EF.Functions.Like((i.Occupant.FirstName.ToLower() + " " + i.Occupant.LastName.ToLower()), searchTerm)
-                );
-            }
+                // Rule 5: Limit the list to avoid UI memory bloat
+                PendingMeterUnits = PendingMeterUnits.Distinct().Take(10).ToList();
 
-            if (BuildingId.HasValue)
+                // ==========================================
+                // STEP B: LOAD DROPDOWNS & INVOICE GRID
+                // ==========================================
+                var buildings = await _context.Buildings.Where(b => b.TenantId == tenantId).ToListAsync();
+                BuildingOptions = new SelectList(buildings, "Id", "Name", BuildingId);
+
+                var unitsQuery = _context.Units.Where(u => u.TenantId == tenantId);
+                if (BuildingId.HasValue)
+                {
+                    unitsQuery = unitsQuery.Where(u => u.BuildingId == BuildingId.Value);
+                }
+                var units = await unitsQuery.ToListAsync();
+                UnitOptions = new SelectList(units, "Id", "UnitNumber", UnitId);
+
+                var query = _context.Invoices
+                    .Include(i => i.Occupant)
+                    .Include(i => i.Contract)
+                        .ThenInclude(c => c.Unit)
+                    .Where(i => i.TenantId == tenantId && i.Status != "PAID")
+                    .AsQueryable();
+
+                // Filters
+                if (!string.IsNullOrEmpty(SearchName))
+                {
+                    var searchTerm = SearchName.ToLower().Trim();
+                    if (!searchTerm.Contains("%")) searchTerm = $"%{searchTerm}%";
+
+                    query = query.Where(i =>
+                        i.Occupant != null &&
+                        EF.Functions.Like((i.Occupant.FirstName.ToLower() + " " + i.Occupant.LastName.ToLower()), searchTerm)
+                    );
+                }
+
+                if (BuildingId.HasValue) query = query.Where(i => i.Contract!.Unit!.BuildingId == BuildingId.Value);
+                if (UnitId.HasValue) query = query.Where(i => i.Contract!.UnitId == UnitId.Value);
+                if (!string.IsNullOrEmpty(StatusFilter)) query = query.Where(i => i.Status == StatusFilter);
+                if (StartDate.HasValue) query = query.Where(i => i.InvoiceDate >= StartDate.Value);
+                if (EndDate.HasValue) query = query.Where(i => i.InvoiceDate <= EndDate.Value);
+
+                // Pagination (Rule 5)
+                TotalCount = await query.CountAsync();
+                TotalPages = (int)Math.Ceiling(TotalCount / (double)PageSize);
+                if (PageIndex < 1) PageIndex = 1;
+
+                Invoices = await query
+                    .OrderByDescending(i => i.InvoiceDate)
+                    .ThenByDescending(i => i.CreatedAt)
+                    .Skip((PageIndex - 1) * PageSize)
+                    .Take(PageSize)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
             {
-                query = query.Where(i => i.Contract!.Unit!.BuildingId == BuildingId.Value);
+                _logger.LogError(ex, "Failed to load Invoices dashboard.");
+                StatusMessage = "An error occurred while loading the data.";
             }
-
-            if (UnitId.HasValue)
-            {
-                query = query.Where(i => i.Contract!.UnitId == UnitId.Value);
-            }
-
-            if (!string.IsNullOrEmpty(StatusFilter))
-            {
-                query = query.Where(i => i.Status == StatusFilter);
-            }
-
-            if (StartDate.HasValue)
-            {
-                query = query.Where(i => i.InvoiceDate >= StartDate.Value);
-            }
-
-            if (EndDate.HasValue)
-            {
-                query = query.Where(i => i.InvoiceDate <= EndDate.Value);
-            }
-
-            // 4. Get Total Count for Pagination Math
-            TotalCount = await query.CountAsync();
-            TotalPages = (int)Math.Ceiling(TotalCount / (double)PageSize);
-
-            // 5. Apply Pagination and Fetch Data
-            Invoices = await query
-                .OrderByDescending(i => i.InvoiceDate)
-                .ThenByDescending(i => i.CreatedAt)
-                .Skip((PageIndex - 1) * PageSize)
-                .Take(PageSize)
-                .ToListAsync();
         }
 
         public async Task<IActionResult> OnPostGenerateAsync()
         {
-            var tenantId = _tenantService.GetTenantId();
-
-            // Run the engine for TODAY's date
-            int count = await _invoiceService.GenerateMonthlyInvoicesAsync(tenantId, DateTime.Now, AutoPublish);
-
-            if (count > 0)
+            // Rule 1: Try-Catch block
+            try
             {
-                StatusMessage = $"Success! Generated {count} new invoice(s) for today's billing cycle.";
+                var tenantId = _tenantService.GetTenantId();
+                int count = await _invoiceService.GenerateMonthlyInvoicesAsync(tenantId, DateTime.Now, AutoPublish);
+
+                if (count > 0)
+                {
+                    StatusMessage = $"Success! Generated {count} new invoice(s) for today's billing cycle.";
+                }
+                else
+                {
+                    StatusMessage = "No new invoices needed to be generated today.";
+                }
             }
-            else
+            catch (Exception ex)
             {
-                StatusMessage = "No new invoices needed to be generated today. (Either no active contracts match today's billing day, or they were already billed).";
+                _logger.LogError(ex, "Failed to run billing cycle.");
+                StatusMessage = "Critical error occurred during invoice generation.";
             }
 
             return RedirectToPage("./Index");
         }
+
         public async Task<IActionResult> OnPostPublishAllAsync()
         {
-            var tenantId = _tenantService.GetTenantId();
-
-            // Find all invoices for this tenant that are currently Drafts AND Unpaid
-            var draftInvoices = await _context.Invoices
-                .Where(i => i.TenantId == tenantId && !i.IsPublished && i.Status == "UNPAID")
-                .ToListAsync();
-
-            if (draftInvoices.Any())
+            // Rule 1: Try-Catch block
+            try
             {
-                int count = draftInvoices.Count;
+                var tenantId = _tenantService.GetTenantId();
 
-                foreach (var invoice in draftInvoices)
+                var draftInvoices = await _context.Invoices
+                    .Where(i => i.TenantId == tenantId && !i.IsPublished && i.Status == "UNPAID")
+                    .ToListAsync();
+
+                if (draftInvoices.Any())
                 {
-                    invoice.IsPublished = true;
-                }
+                    int count = draftInvoices.Count;
+                    foreach (var invoice in draftInvoices)
+                    {
+                        invoice.IsPublished = true;
+                    }
 
-                await _context.SaveChangesAsync();
-                StatusMessage = $"Success! {count} draft invoice(s) have been published and are now visible to occupants.";
+                    await _context.SaveChangesAsync();
+                    StatusMessage = $"Success! {count} draft invoice(s) have been published.";
+                }
+                else
+                {
+                    StatusMessage = "No draft, unpaid invoices were found to publish.";
+                }
             }
-            else
+            catch (Exception ex)
             {
-                StatusMessage = "No draft, unpaid invoices were found to publish.";
+                _logger.LogError(ex, "Failed to publish drafts.");
+                StatusMessage = "An error occurred while publishing drafts.";
             }
 
             return RedirectToPage();

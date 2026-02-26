@@ -45,11 +45,47 @@
                 </button>
             </form>
 
-            <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#billingCycleModal">
-                <i class="bi bi-lightning-charge-fill me-2"></i> Run Billing Cycle
-            </button>
+            @* --- VALIDATED BILLING BUTTON --- *@
+            @if (Model.IsBillingBlocked)
+            {
+                <button type="button" class="btn btn-warning rounded-pill px-4 shadow-sm fw-bold border-0"
+                        title="Billing is blocked until all meter readings are entered.">
+                    <i class="bi bi-lock-fill me-2"></i> Billing Locked
+                </button>
+            }
+            else
+            {
+                <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#billingCycleModal">
+                    <i class="bi bi-lightning-charge-fill me-2"></i> Run Billing Cycle
+                </button>
+            }
         </div>
     </div>
+
+    @* --- NEW: BLOCKER WARNING ALERT --- *@
+    @if (Model.IsBillingBlocked)
+    {
+        <div class="alert alert-warning border-0 shadow-sm rounded-4 p-4 mb-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div class="d-flex align-items-center">
+                <div class="bg-white bg-opacity-50 p-3 rounded-circle me-3 d-none d-sm-block">
+                    <i class="bi bi-speedometer2 fs-3 text-warning"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-1">Incomplete Meter Readings</h5>
+                    <p class="mb-2 small text-dark">The following units require meter readings before you can generate this month's invoices:</p>
+                    <div class="d-flex flex-wrap gap-1">
+                        @foreach (var unit in Model.PendingMeterUnits)
+                        {
+                            <span class="badge bg-dark bg-opacity-10 text-dark">@unit</span>
+                        }
+                    </div>
+                </div>
+            </div>
+            <a asp-page="/MeterReadings/Index" class="btn btn-dark rounded-pill px-4 fw-bold shadow-sm text-nowrap">
+                Enter Readings <i class="bi bi-arrow-right ms-2"></i>
+            </a>
+        </div>
+    }
 
     @* --- FILTER CARD --- *@
     <div class="card border-0 shadow-sm rounded-4 mb-4">
@@ -155,11 +191,34 @@
                     </tbody>
                 </table>
             </div>
+
+            @* Pagination Controls *@
+            @if (Model.TotalPages > 1)
+            {
+                <div class="d-flex justify-content-center mt-4">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination mb-0">
+                            @for (int i = 1; i <= Model.TotalPages; i++)
+                            {
+                                <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                                    <a class="page-link" asp-route-PageIndex="@i"
+                                       asp-route-SearchName="@Model.SearchName"
+                                       asp-route-StatusFilter="@Model.StatusFilter"
+                                       asp-route-BuildingId="@Model.BuildingId"
+                                       asp-route-UnitId="@Model.UnitId"
+                                       asp-route-StartDate="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                                       asp-route-EndDate="@Model.EndDate?.ToString("yyyy-MM-dd")">@i</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                </div>
+            }
         </div>
     </div>
 </div>
 
-@* ... BILLING CYCLE MODAL (Unchanged) ... *@
+@* ... BILLING CYCLE MODAL ... *@
 <div class="modal fade" id="billingCycleModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
