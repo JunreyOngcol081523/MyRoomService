@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using MyRoomService.Domain.Entities;
 using MyRoomService.Domain.Interfaces;
 using MyRoomService.Infrastructure.Persistence;
-using MyRoomService.Services;
 
 namespace MyRoomService.Pages.Invoices
 {
@@ -36,7 +35,6 @@ namespace MyRoomService.Pages.Invoices
         [BindProperty(SupportsGet = true)] public string? StatusFilter { get; set; }
         [BindProperty(SupportsGet = true)] public DateTime? StartDate { get; set; }
         [BindProperty(SupportsGet = true)] public DateTime? EndDate { get; set; }
-        [BindProperty] public bool AutoPublish { get; set; }
 
         // --- PAGINATION PROPERTIES ---
         [BindProperty(SupportsGet = true)] public int PageIndex { get; set; } = 1;
@@ -48,28 +46,24 @@ namespace MyRoomService.Pages.Invoices
         public SelectList BuildingOptions { get; set; } = default!;
         public SelectList UnitOptions { get; set; } = default!;
 
-        // --- NEW: BILLING BLOCKER PROPERTIES ---
+        // --- BILLING BLOCKER PROPERTIES ---
         public bool IsBillingBlocked { get; set; }
         public List<string> PendingMeterUnits { get; set; } = new();
 
         public async Task OnGetAsync()
         {
-            // Rule 2: Breadcrumbs
             ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
             {
                 ("Billing", "/Invoices"),
                 ("Invoice Management", "")
             };
 
-            // Rule 1: Try-Catch wrapping the entire execution
             try
             {
                 var tenantId = _tenantService.GetTenantId();
                 var today = DateTime.Today;
 
-                // ==========================================
-                // STEP A: EVALUATE BILLING BLOCKER LOGIC
-                // ==========================================
+                // 1. EVALUATE BILLING BLOCKER
                 var activeContracts = await _context.Contracts
                     .Include(c => c.Unit).ThenInclude(u => u.UnitServices)
                     .Where(c => c.TenantId == tenantId && c.Status == ContractStatus.Active)
@@ -95,7 +89,6 @@ namespace MyRoomService.Pages.Invoices
 
                             foreach (var service in meteredServices)
                             {
-                                // Look for an UNBILLED reading for this specific utility
                                 var hasUnbilledReading = await _context.MeterReadings
                                     .AnyAsync(mr => mr.UnitServiceId == service.Id && !mr.IsBilled);
 
@@ -109,12 +102,9 @@ namespace MyRoomService.Pages.Invoices
                     }
                 }
 
-                // Rule 5: Limit the list to avoid UI memory bloat
                 PendingMeterUnits = PendingMeterUnits.Distinct().Take(10).ToList();
 
-                // ==========================================
-                // STEP B: LOAD DROPDOWNS & INVOICE GRID
-                // ==========================================
+                // 2. LOAD FILTERS & GRID
                 var buildings = await _context.Buildings.Where(b => b.TenantId == tenantId).ToListAsync();
                 BuildingOptions = new SelectList(buildings, "Id", "Name", BuildingId);
 
@@ -133,15 +123,12 @@ namespace MyRoomService.Pages.Invoices
                     .Where(i => i.TenantId == tenantId && i.Status != "PAID")
                     .AsQueryable();
 
-                // Filters
                 if (!string.IsNullOrEmpty(SearchName))
                 {
                     var searchTerm = SearchName.ToLower().Trim();
-                    if (!searchTerm.Contains("%")) searchTerm = $"%{searchTerm}%";
-
                     query = query.Where(i =>
                         i.Occupant != null &&
-                        EF.Functions.Like((i.Occupant.FirstName.ToLower() + " " + i.Occupant.LastName.ToLower()), searchTerm)
+                        (i.Occupant.FirstName.ToLower() + " " + i.Occupant.LastName.ToLower()).Contains(searchTerm)
                     );
                 }
 
@@ -151,7 +138,6 @@ namespace MyRoomService.Pages.Invoices
                 if (StartDate.HasValue) query = query.Where(i => i.InvoiceDate >= StartDate.Value);
                 if (EndDate.HasValue) query = query.Where(i => i.InvoiceDate <= EndDate.Value);
 
-                // Pagination (Rule 5)
                 TotalCount = await query.CountAsync();
                 TotalPages = (int)Math.Ceiling(TotalCount / (double)PageSize);
                 if (PageIndex < 1) PageIndex = 1;
@@ -172,19 +158,20 @@ namespace MyRoomService.Pages.Invoices
 
         public async Task<IActionResult> OnPostGenerateAsync()
         {
-            // Rule 1: Try-Catch block
             try
             {
                 var tenantId = _tenantService.GetTenantId();
-                int count = await _invoiceService.GenerateMonthlyInvoicesAsync(tenantId, DateTime.Now, AutoPublish);
+
+                // 🚨 FORCED DRAFT: 'AutoPublish' is removed. Third parameter is strictly 'false'.
+                int count = await _invoiceService.GenerateMonthlyInvoicesAsync(tenantId, DateTime.Now, false);
 
                 if (count > 0)
                 {
-                    StatusMessage = $"Success! Generated {count} new invoice(s) for today's billing cycle.";
+                    StatusMessage = $"Success! Generated {count} new invoice(s) as Drafts for your review.";
                 }
                 else
                 {
-                    StatusMessage = "No new invoices needed to be generated today.";
+                    StatusMessage = "No new invoices were required for today's cycle.";
                 }
             }
             catch (Exception ex)
@@ -198,7 +185,6 @@ namespace MyRoomService.Pages.Invoices
 
         public async Task<IActionResult> OnPostPublishAllAsync()
         {
-            // Rule 1: Try-Catch block
             try
             {
                 var tenantId = _tenantService.GetTenantId();
@@ -216,7 +202,7 @@ namespace MyRoomService.Pages.Invoices
                     }
 
                     await _context.SaveChangesAsync();
-                    StatusMessage = $"Success! {count} draft invoice(s) have been published.";
+                    StatusMessage = $"Success! {count} draft invoice(s) have been published and are now visible to occupants.";
                 }
                 else
                 {

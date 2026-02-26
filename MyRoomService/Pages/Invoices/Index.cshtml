@@ -37,7 +37,7 @@
         </div>
 
         <div class="d-flex gap-2">
-            @* --- NEW: PUBLISH ALL BUTTON --- *@
+            @* --- PUBLISH ALL BUTTON --- *@
             <form method="post" asp-page-handler="PublishAll">
                 <button type="submit" class="btn btn-outline-success rounded-pill px-4 shadow-sm fw-bold"
                         onclick="return confirm('Are you sure you want to publish all unpaid drafts? Tenants will see them immediately.');">
@@ -45,7 +45,7 @@
                 </button>
             </form>
 
-            @* --- VALIDATED BILLING BUTTON --- *@
+            @* --- UPDATED: DIRECT BILLING BUTTON (No Modal) --- *@
             @if (Model.IsBillingBlocked)
             {
                 <button type="button" class="btn btn-warning rounded-pill px-4 shadow-sm fw-bold border-0"
@@ -55,9 +55,12 @@
             }
             else
             {
-                <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#billingCycleModal">
-                    <i class="bi bi-lightning-charge-fill me-2"></i> Run Billing Cycle
-                </button>
+                <form method="post" asp-page-handler="Generate">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold"
+                            onclick="return confirm('Are you sure you want to run the monthly billing cycle? All invoices will be generated as drafts for your review.');">
+                        <i class="bi bi-lightning-charge-fill me-2"></i> Run Billing Cycle
+                    </button>
+                </form>
             }
         </div>
     </div>
@@ -214,37 +217,6 @@
                     </nav>
                 </div>
             }
-        </div>
-    </div>
-</div>
-
-@* ... BILLING CYCLE MODAL ... *@
-<div class="modal fade" id="billingCycleModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark">Run Monthly Billing</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="post" asp-page-handler="Generate">
-                <div class="modal-body p-4">
-                    <p class="text-muted">Generate invoices for <strong>@DateTime.Now.ToString("MMMM dd")</strong>.</p>
-                    <div class="card bg-light border-0 rounded-4 p-3 mt-3">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" name="AutoPublish" id="publishAuto" value="true" checked>
-                            <label class="form-check-label fw-bold" for="publishAuto">Publish Automatically</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="AutoPublish" id="saveDraft" value="false">
-                            <label class="form-check-label fw-bold" for="saveDraft">Save as Draft</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">Execute</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
