@@ -49,6 +49,15 @@
                                 <option value="PER_BED">Per Bed (Dormitory/BoardingHouse)</option>
                             </select>
                         </div>
+                        @* 🚨 NEW: METERED BILLING MODE *@
+                        <div class="mb-3">
+                            <label asp-for="Unit.MeteredBillingMode" class="form-label fw-semibold">Utility Billing Mode</label>
+                            <select asp-for="Unit.MeteredBillingMode"
+                                    asp-items="Html.GetEnumSelectList<MyRoomService.Domain.Entities.MeteredBillingMode>()"
+                                    class="form-select">
+                            </select>
+                            <div class="form-text small">Determines how electricity/water bills are distributed for shared units.</div>
+                        </div>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label asp-for="Unit.MaxOccupancy" class="form-label fw-semibold">Max Occupancy</label>

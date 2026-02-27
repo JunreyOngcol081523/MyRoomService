@@ -20,30 +20,28 @@ namespace MyRoomService.Services
         {
             try
             {
-                // Fetch ALL Active contracts instead of strictly matching today's day
                 var activeContracts = await _context.Contracts
+                    .Include(c => c.Unit) // Ensure Unit is loaded for the mode check
                     .Where(c => c.TenantId == tenantId && c.Status == ContractStatus.Active)
                     .ToListAsync();
 
                 int generatedCount = 0;
 
+                // 🚨 NEW: The "Pending List" for deferred marking
+                var readingsToMarkBilled = new HashSet<Guid>();
+
                 foreach (var contract in activeContracts)
                 {
                     try
                     {
-                        // Calculate the correct billing date for this specific month
-                        // Math.Min protects against short months (e.g., BillingDay 31 becomes Feb 28)
                         int daysInMonth = DateTime.DaysInMonth(targetDate.Year, targetDate.Month);
                         int actualBillingDay = Math.Min(contract.BillingDay, daysInMonth);
-
                         var expectedBillingDate = new DateTime(targetDate.Year, targetDate.Month, actualBillingDay);
 
-                        // If today (targetDate) is ON or PAST their billing date for this month, process them!
                         if (targetDate.Date >= expectedBillingDate.Date)
                         {
-                            // Pass the 'expectedBillingDate' so the invoice reflects their actual due cycle, 
-                            // even if the system is catching up a few days late.
-                            var invoice = await GenerateInvoiceForContractAsync(tenantId, contract.Id, expectedBillingDate, autoPublish);
+                            // 🚨 Pass the HashSet down to the generator
+                            var invoice = await GenerateInvoiceForContractAsync(tenantId, contract.Id, expectedBillingDate, autoPublish, readingsToMarkBilled);
 
                             if (invoice != null)
                             {
@@ -54,8 +52,22 @@ namespace MyRoomService.Services
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to process billing for Contract {ContractId}", contract.Id);
-                        continue; // Keep going if one contract fails
+                        continue;
                     }
+                }
+
+                // 🚨 NEW: The "Sweep" - Mark all collected readings as billed at the end of the batch
+                if (readingsToMarkBilled.Any())
+                {
+                    var readings = await _context.MeterReadings
+                        .Where(m => readingsToMarkBilled.Contains(m.Id))
+                        .ToListAsync();
+
+                    foreach (var reading in readings)
+                    {
+                        reading.IsBilled = true;
+                    }
+                    await _context.SaveChangesAsync();
                 }
 
                 return generatedCount;
@@ -67,17 +79,18 @@ namespace MyRoomService.Services
             }
         }
 
+        // 🚨 Updated Signature to accept the HashSet
         public async Task<Invoice?> GenerateInvoiceForContractAsync(
             Guid tenantId,
             Guid contractId,
             DateTime targetDate,
-            bool autoPublish = false)
+            bool autoPublish = false,
+            HashSet<Guid>? processedReadings = null) // Optional parameter
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                // 1. Load Contract + Unit + ALL Services + AddOns
                 var contract = await _context.Contracts
                     .Include(c => c.Occupant)
                     .Include(c => c.AddOns).ThenInclude(a => a.ChargeDefinition)
@@ -87,12 +100,10 @@ namespace MyRoomService.Services
 
                 if (contract == null || contract.Status != ContractStatus.Active) return null;
 
-                // 2. Duplicate Check (Rule 1 & Rule 5 safety)
                 var exists = await _context.Invoices.AnyAsync(i => i.ContractId == contractId
                     && i.InvoiceDate.Month == targetDate.Month && i.InvoiceDate.Year == targetDate.Year && i.Status != "VOID");
                 if (exists) return null;
 
-                // 3. Initialize Invoice
                 var invoice = new Invoice
                 {
                     Id = Guid.NewGuid(),
@@ -127,10 +138,8 @@ namespace MyRoomService.Services
                 {
                     foreach (var service in contract.Unit.UnitServices)
                     {
-                        // CRITICAL: We skip metered services here because they are handled in Section C
                         if (service.IsMetered) continue;
 
-                        // Only add Fixed Monthly Services (WiFi, Trash, Parking, etc.)
                         invoice.Items.Add(new InvoiceItem
                         {
                             Id = Guid.NewGuid(),
@@ -144,11 +153,8 @@ namespace MyRoomService.Services
                     }
                 }
 
-                // --- SECTION C: METERED UTILITIES (CONSUMPTION-BASED) ---
-                // We look for any metered service assigned to this unit
-                var meteredServiceIds = contract.Unit?.UnitServices
-                    .Where(s => s.IsMetered)
-                    .Select(s => s.Id).ToList();
+                // --- SECTION C: METERED UTILITIES (SPLIT LOGIC) ---
+                var meteredServiceIds = contract.Unit?.UnitServices.Where(s => s.IsMetered).Select(s => s.Id).ToList();
 
                 if (meteredServiceIds != null && meteredServiceIds.Any())
                 {
@@ -156,7 +162,6 @@ namespace MyRoomService.Services
                     {
                         var serviceDetail = contract.Unit!.UnitServices.First(s => s.Id == serviceId);
 
-                        // Find the latest UNBILLED reading
                         var reading = await _context.MeterReadings
                             .Where(m => m.UnitServiceId == serviceId && !m.IsBilled)
                             .OrderByDescending(m => m.ReadingDate)
@@ -165,7 +170,24 @@ namespace MyRoomService.Services
                         if (reading != null)
                         {
                             decimal consumption = (decimal)reading.Consumption;
-                            decimal amount = consumption * serviceDetail.MonthlyPrice; // Price acts as the Rate/kWh
+                            decimal totalAmount = consumption * serviceDetail.MonthlyPrice;
+
+                            // 🚨 THE NEW LOGIC
+                            decimal finalAmount = totalAmount; // Default assumes they pay all of it
+                            string descriptionSuffix = "";
+
+                            if (contract.Unit.MeteredBillingMode == MeteredBillingMode.SplitEqually)
+                            {
+                                // Find how many people are currently active in this exact room
+                                var activeRoommatesCount = await _context.Contracts
+                                    .CountAsync(c => c.UnitId == contract.UnitId && c.Status == ContractStatus.Active);
+
+                                if (activeRoommatesCount > 1)
+                                {
+                                    finalAmount = totalAmount / activeRoommatesCount;
+                                    descriptionSuffix = $" (Split 1/{activeRoommatesCount})";
+                                }
+                            }
 
                             invoice.Items.Add(new InvoiceItem
                             {
@@ -173,13 +195,22 @@ namespace MyRoomService.Services
                                 TenantId = tenantId,
                                 InvoiceId = invoice.Id,
                                 ItemType = "UTILITY",
-                                Description = $"{serviceDetail.Name} Usage: {reading.PreviousValue:N2} to {reading.CurrentValue:N2} ({consumption:N2} units)",
-                                Amount = amount
+                                Description = $"{serviceDetail.Name} Usage: {reading.PreviousValue:N2} to {reading.CurrentValue:N2} ({consumption:N2} units){descriptionSuffix}",
+                                Amount = finalAmount
                             });
-                            runningTotal += amount;
+                            runningTotal += finalAmount;
 
-                            // Mark as billed so it isn't picked up by next cycle
-                            reading.IsBilled = true;
+                            // 🚨 DEFERRED MARKING
+                            if (processedReadings != null)
+                            {
+                                // Add to batch sweep list
+                                processedReadings.Add(reading.Id);
+                            }
+                            else
+                            {
+                                // Fallback: If generated individually outside of batch, mark it now
+                                reading.IsBilled = true;
+                            }
                         }
                     }
                 }

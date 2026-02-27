@@ -60,18 +60,19 @@ namespace MyRoomService.Pages.Units
 
         public async Task<IActionResult> OnPostAsync()
         {
-            // Try-Catch wrapper for safe execution
             try
             {
                 var tenantId = _tenantService.GetTenantId();
 
+                // 1. Explicitly assign IDs that aren't in the form
                 Unit.TenantId = tenantId;
                 Unit.BuildingId = BuildingId;
 
+                // 2. Clean up Model State
                 ModelState.Remove("Unit.Building");
                 ModelState.Remove("Unit.UnitServices");
+                // Ensure the new enum property is validated correctly
 
-                // Clear dynamic list validation to prevent silent fails
                 var dynamicKeys = ModelState.Keys.Where(k => k.StartsWith("SelectedServices")).ToList();
                 foreach (var key in dynamicKeys) ModelState.Remove(key);
 
@@ -81,6 +82,7 @@ namespace MyRoomService.Pages.Units
                     return Page();
                 }
 
+                // 3. Handle Child Services (HashSet/Sync logic for new records)
                 if (SelectedServices != null && SelectedServices.Any())
                 {
                     Unit.UnitServices ??= new List<UnitService>();
@@ -90,9 +92,9 @@ namespace MyRoomService.Pages.Units
                     {
                         Unit.UnitServices.Add(new UnitService
                         {
-                            Id = Guid.NewGuid(), // Ensure new ID
+                            Id = Guid.NewGuid(),
                             TenantId = tenantId,
-                            Name = textInfo.ToTitleCase(service.Name.Trim().ToLower()), // 🚨 Format to Title Case
+                            Name = textInfo.ToTitleCase(service.Name.Trim().ToLower()),
                             MonthlyPrice = service.MonthlyPrice,
                             IsMetered = service.IsMetered,
                             MeterNumber = service.IsMetered ? service.MeterNumber : null
@@ -100,16 +102,16 @@ namespace MyRoomService.Pages.Units
                     }
                 }
 
+                // 4. Save the tracked Unit (Includes MeteredBillingMode automatically via binding)
                 _context.Units.Add(Unit);
                 await _context.SaveChangesAsync();
 
                 TempData["StatusMessage"] = "Unit created successfully.";
-
                 return RedirectToPage("/Buildings/ManageBuilding", new { id = BuildingId });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                ModelState.AddModelError(string.Empty, "A critical error occurred while saving the unit. Please try again.");
+                ModelState.AddModelError(string.Empty, "A critical error occurred: " + ex.Message);
                 await ReloadPageDataAsync(_tenantService.GetTenantId());
                 return Page();
             }

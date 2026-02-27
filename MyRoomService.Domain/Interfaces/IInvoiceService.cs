@@ -1,7 +1,7 @@
 ﻿using MyRoomService.Domain.Entities;
 using System;
 using System.Collections.Generic;
-using System.Text;
+using System.Threading.Tasks;
 
 namespace MyRoomService.Domain.Interfaces
 {
@@ -11,6 +11,11 @@ namespace MyRoomService.Domain.Interfaces
         Task<int> GenerateMonthlyInvoicesAsync(Guid tenantId, DateTime targetDate, bool autoPublish);
 
         // Generates an invoice for a specific contract (Great for manual overrides)
-        Task<Invoice?> GenerateInvoiceForContractAsync(Guid tenantId, Guid contractId, DateTime targetDate, bool autoPublish=false);
+        Task<Invoice?> GenerateInvoiceForContractAsync(
+            Guid tenantId,
+            Guid contractId,
+            DateTime targetDate,
+            bool autoPublish = false,
+            HashSet<Guid>? processedReadings = null); // 🚨 New parameter added here
     }
 }

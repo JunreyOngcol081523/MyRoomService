@@ -38,12 +38,24 @@
                                 <span asp-validation-for="Unit.FloorLevel" class="text-danger"></span>
                             </div>
 
+                            @* --- Add this inside the "Unit Details" row g-3 div --- *@
+
                             <div class="col-md-6">
                                 <label asp-for="Unit.RentalMode" class="form-label fw-semibold">Rental Mode</label>
                                 <select asp-for="Unit.RentalMode" class="form-select">
                                     <option value="ENTIRE_UNIT">Entire Unit (Apartment/Commercial Space)</option>
-                                    <option value="PER_BED">Per Bed (Dormitory/BoardingHouse)</option>
+                                    <option value="PER_BED">Per Bed (Dormitory/Boarding House)</option>
                                 </select>
+                            </div>
+
+                            @* 🚨 NEW: METERED BILLING MODE SELECTION *@
+                            <div class="col-md-6">
+                                <label asp-for="Unit.MeteredBillingMode" class="form-label fw-semibold">Utility Billing Mode</label>
+                                <select asp-for="Unit.MeteredBillingMode"
+                                        asp-items="Html.GetEnumSelectList<MyRoomService.Domain.Entities.MeteredBillingMode>()"
+                                        class="form-select">
+                                </select>
+                                <div class="form-text small">Determines how electricity/water bills are distributed if this unit is shared.</div>
                             </div>
 
                             <div class="col-md-6">

@@ -95,6 +95,7 @@ namespace MyRoomService.Pages.Units
                 unitToUpdate.UnitNumber = Unit.UnitNumber;
                 unitToUpdate.FloorLevel = Unit.FloorLevel;
                 unitToUpdate.RentalMode = Unit.RentalMode;
+                unitToUpdate.MeteredBillingMode = Unit.MeteredBillingMode;
                 unitToUpdate.MaxOccupancy = Unit.MaxOccupancy;
                 unitToUpdate.DefaultRate = Unit.DefaultRate;
                 unitToUpdate.Status = Unit.Status;

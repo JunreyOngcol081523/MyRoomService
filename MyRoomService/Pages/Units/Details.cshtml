@@ -44,6 +44,10 @@
                             <span class="fw-bold text-capitalize">@(Model.Unit.RentalMode.Replace("_", " ").ToLower())</span>
                         </li>
                         <li class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
+                            <span class="text-muted">Metered Billing Mode</span>
+                            <span class="fw-bold text-capitalize">@(Model.Unit.MeteredBillingMode.ToString())</span>
+                        </li>
+                        <li class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
                             <span class="text-muted">Max Occupancy</span>
                             <span class="fw-bold">@Model.Unit.MaxOccupancy Pax</span>
                         </li>

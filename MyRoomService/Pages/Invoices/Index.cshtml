@@ -159,7 +159,7 @@
                         {
                             foreach (var invoice in Model.Invoices)
                             {
-                                <tr>
+                                <tr id="row-@invoice.Id">
                                     <td>
                                         <a asp-page="./Details" asp-route-id="@invoice.Id" class="fw-bold text-decoration-none">
                                             @invoice.Id.ToString().Substring(0, 8).ToUpper()
@@ -184,9 +184,34 @@
                                         }
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge @(invoice.Status == "PAID" ? "bg-success" : (invoice.Status == "OVERDUE" ? "bg-danger" : "bg-warning text-dark")) rounded-pill">
+                                        <span class="badge @(invoice.Status == "PAID" ? "bg-success" : (invoice.Status == "OVERDUE" ? "bg-danger" : (invoice.Status == "DRAFT" ? "bg-secondary" : "bg-warning text-dark"))) rounded-pill">
                                             @invoice.Status
                                         </span>
+                                    </td>
+
+                                    @* 🚨 NEW: Actions Column *@
+                                    <td class="text-center">
+                                        <a asp-page="./Details" asp-route-id="@invoice.Id" class="btn btn-sm btn-outline-primary shadow-sm" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+
+                                        @if (invoice.Status == "DRAFT" || !invoice.IsPublished)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-danger shadow-sm ms-1"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#deleteInvoiceModal"
+                                                    onclick="prepareDelete('@invoice.Id', '@(invoice.Occupant?.FullName)', '@invoice.InvoiceDate.ToString("MMMM yyyy")')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary ms-1 border-0"
+                                                    disabled
+                                                    title="Only Drafts can be deleted. Published invoices must be Voided.">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -220,3 +245,100 @@
         </div>
     </div>
 </div>
+@* --- DELETE INVOICE MODAL --- *@
+<div class="modal fade" id="deleteInvoiceModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-bottom-0 pb-3">
+                <h5 class="modal-title fw-bold" id="deleteModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Draft Invoice
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="mb-1 text-dark">Are you sure you want to delete the draft invoice for:</p>
+                <p class="fw-bold text-primary fs-5 mb-3" id="deleteModalOccupantName"></p>
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Deleting this draft will release any linked meter readings so they can be billed again. This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer bg-light border-top-0 pt-3">
+                <form method="post" asp-page-handler="DeleteDraft">
+                    <input type="hidden" name="invoiceId" id="deleteModalInvoiceId" />
+                    <button type="button" class="btn btn-light px-4 border" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger px-4 shadow-sm fw-bold">Yes, Delete Draft</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        // 1. Prepare the Modal data (Same as before)
+        function prepareDelete(invoiceId, occupantName, month) {
+            document.getElementById('deleteModalInvoiceId').value = invoiceId;
+            document.getElementById('deleteModalOccupantName').textContent = occupantName + ' (' + month + ')';
+        }
+
+        // 2. The AJAX / Fetch API Magic
+        document.addEventListener('DOMContentLoaded', function () {
+            const deleteForm = document.querySelector('#deleteInvoiceModal form');
+
+            deleteForm.addEventListener('submit', async function (e) {
+                e.preventDefault(); // 🚨 STOP the full page reload!
+
+                // Get the data
+                const invoiceId = document.getElementById('deleteModalInvoiceId').value;
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value; // Security token
+                const submitBtn = deleteForm.querySelector('button[type="submit"]');
+
+                // Visual feedback (Change button to "Deleting...")
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+                submitBtn.disabled = true;
+
+                try {
+                    // Send background request to the C# handler
+                    const response = await fetch(`?handler=DeleteDraft`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'RequestVerificationToken': token // Required by Razor Pages
+                        },
+                        body: new URLSearchParams({ invoiceId: invoiceId })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        // 1. Hide the Bootstrap Modal
+                        const modalElement = document.getElementById('deleteInvoiceModal');
+                        const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                        modalInstance.hide();
+
+                        // 2. Find the table row and fade it out smoothly
+                        const rowToDelete = document.getElementById(`row-${invoiceId}`);
+                        if (rowToDelete) {
+                            rowToDelete.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+                            rowToDelete.style.opacity = "0";
+                            rowToDelete.style.transform = "translateX(-20px)";
+
+                            // Wait for animation to finish, then remove from DOM
+                            setTimeout(() => rowToDelete.remove(), 400);
+                        }
+                    } else {
+                        alert("Error: " + result.message);
+                    }
+                } catch (error) {
+                    console.error("AJAX Error:", error);
+                    alert("A network error occurred.");
+                } finally {
+                    // Reset the button
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                }
+            });
+        });
+    </script>
+}

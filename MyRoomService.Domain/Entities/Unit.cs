@@ -27,6 +27,11 @@ namespace MyRoomService.Domain.Entities
         public UnitStatus Status { get; set; } = UnitStatus.Available;
         public ICollection<Contract> Contracts { get; set; } = new List<Contract>();
         public ICollection<UnitService> UnitServices { get; set; } = new List<UnitService>();
+        /// <summary>
+        /// Defines how metered utility charges are distributed among occupants of this specific unit.
+        /// </summary>
+        [Required]
+        public MeteredBillingMode MeteredBillingMode { get; set; } = MeteredBillingMode.SplitEqually;
     }
     public enum UnitStatus
     {

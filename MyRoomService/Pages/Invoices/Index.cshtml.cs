@@ -53,10 +53,10 @@ namespace MyRoomService.Pages.Invoices
         public async Task OnGetAsync()
         {
             ViewData["Breadcrumbs"] = new List<(string Title, string Url)>
-            {
-                ("Billing", "/Invoices"),
-                ("Invoice Management", "")
-            };
+    {
+        ("Billing", "/Invoices"),
+        ("Invoice Management", "")
+    };
 
             try
             {
@@ -85,6 +85,17 @@ namespace MyRoomService.Pages.Invoices
 
                         if (!alreadyBilled)
                         {
+                            // 🚨 NEW: The Grace Period Check
+                            // If the occupant moved in during the current billing month, skip the meter check.
+                            // They will be billed their utility split starting next month.
+                            var currentMonthStart = new DateTime(targetDate.Year, targetDate.Month, 1);
+                            bool isNewMoveIn = contract.StartDate >= currentMonthStart;
+
+                            if (isNewMoveIn)
+                            {
+                                continue;
+                            }
+
                             var meteredServices = contract.Unit?.UnitServices?.Where(us => us.IsMetered).ToList() ?? new List<UnitService>();
 
                             foreach (var service in meteredServices)
@@ -216,6 +227,128 @@ namespace MyRoomService.Pages.Invoices
             }
 
             return RedirectToPage();
+        }
+        public async Task<IActionResult> OnPostDeleteDraftAsync(Guid invoiceId)
+        {
+            var tenantId = _tenantService.GetTenantId();
+
+            // 🚨 DEBUG 1: Did the ID actually arrive from the UI?
+            _logger.LogWarning("========== DELETE DRAFT TRIGGERED ==========");
+            _logger.LogWarning($"Target InvoiceId: {invoiceId}");
+            _logger.LogWarning($"Current TenantId: {tenantId}");
+
+            if (invoiceId == Guid.Empty)
+            {
+                _logger.LogError("FAILURE: The invoiceId arrived empty! The HTML form did not pass the ID correctly.");
+                TempData["ErrorMessage"] = "System Error: Missing Invoice ID.";
+                return RedirectToPage();
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Fetch the invoice
+                var invoice = await _context.Invoices
+                    .Include(i => i.Contract)
+                        .ThenInclude(c => c.Unit)
+                            .ThenInclude(u => u.UnitServices)
+                    .Include(i => i.Contract)
+                        .ThenInclude(c => c.AddOns)
+                            .ThenInclude(a => a.ChargeDefinition)
+                    .Include(i => i.Items)
+                    .FirstOrDefaultAsync(i => i.Id == invoiceId && i.TenantId == tenantId);
+
+                // 🚨 DEBUG 2: Did we find it in the database?
+                if (invoice == null)
+                {
+                    _logger.LogWarning("FAILURE: Invoice was NULL. It either doesn't exist, or the TenantId doesn't match.");
+                    TempData["ErrorMessage"] = "Invoice not found.";
+                    return RedirectToPage();
+                }
+
+                _logger.LogInformation($"SUCCESS: Found Invoice. Status: '{invoice.Status}', IsPublished: {invoice.IsPublished}");
+
+                // 2. Security Check
+                if (invoice.Status != "DRAFT" && invoice.IsPublished)
+                {
+                    _logger.LogWarning("FAILURE: Security block! Attempted to delete a non-draft or published invoice.");
+                    TempData["ErrorMessage"] = "Only Draft invoices can be deleted. Published invoices must be Voided.";
+                    return RedirectToPage();
+                }
+
+                // 3. METER READING ROLLBACK
+                var roommateInvoicesExist = await _context.Invoices
+                    .AnyAsync(i => i.Contract!.UnitId == invoice.Contract!.UnitId
+                                && i.InvoiceDate.Month == invoice.InvoiceDate.Month
+                                && i.InvoiceDate.Year == invoice.InvoiceDate.Year
+                                && i.Id != invoice.Id
+                                && i.Status != "VOID");
+
+                _logger.LogInformation($"Roommate Check: Do other active invoices exist for this room? {roommateInvoicesExist}");
+
+                if (!roommateInvoicesExist && invoice.Contract?.Unit?.UnitServices != null)
+                {
+                    var meteredServiceIds = invoice.Contract.Unit.UnitServices.Where(s => s.IsMetered).Select(s => s.Id).ToList();
+                    int releasedMeters = 0;
+
+                    foreach (var serviceId in meteredServiceIds)
+                    {
+                        var lastBilledReading = await _context.MeterReadings
+                            .Where(m => m.UnitServiceId == serviceId && m.IsBilled)
+                            .OrderByDescending(m => m.ReadingDate)
+                            .FirstOrDefaultAsync();
+
+                        if (lastBilledReading != null)
+                        {
+                            lastBilledReading.IsBilled = false;
+                            releasedMeters++;
+                        }
+                    }
+                    _logger.LogInformation($"Released {releasedMeters} meter readings back to the pool.");
+                }
+
+                // 4. ADD-ON ROLLBACK
+                int releasedAddons = 0;
+                if (invoice.Contract?.AddOns != null && invoice.Items != null)
+                {
+                    var addonItems = invoice.Items.Where(item => item.ItemType == "ADDON").ToList();
+                    foreach (var item in addonItems)
+                    {
+                        var matchedAddOn = invoice.Contract.AddOns
+                            .FirstOrDefault(a => a.ChargeDefinition != null
+                                              && a.ChargeDefinition.Name == item.Description
+                                              && a.IsProcessed);
+
+                        if (matchedAddOn != null)
+                        {
+                            matchedAddOn.IsProcessed = false;
+                            releasedAddons++;
+                        }
+                    }
+                }
+                _logger.LogInformation($"Released {releasedAddons} One-Time AddOns back to the pool.");
+
+                // 5. Explicitly Delete the Data
+                int itemCount = invoice.Items?.Count ?? 0;
+                _context.InvoiceItems.RemoveRange(invoice.Items!);
+                _context.Invoices.Remove(invoice);
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogWarning($"SUCCESS: Deleted Invoice and {itemCount} line items.");
+                TempData["StatusMessage"] = "Draft invoice successfully deleted and records rolled back.";
+                return new JsonResult(new { success = true, message = "Draft deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, $"CRITICAL SQL ERROR during deletion: {ex.InnerException?.Message ?? ex.Message}");
+                TempData["ErrorMessage"] = "A critical error occurred while deleting the invoice.";
+                return new JsonResult(new { success = false, message = "Failed to delete the invoice." });
+            }
+
+            
         }
     }
 }
