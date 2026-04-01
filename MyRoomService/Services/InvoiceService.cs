@@ -21,13 +21,11 @@ namespace MyRoomService.Services
             try
             {
                 var activeContracts = await _context.Contracts
-                    .Include(c => c.Unit) // Ensure Unit is loaded for the mode check
+                    .Include(c => c.Unit)
                     .Where(c => c.TenantId == tenantId && c.Status == ContractStatus.Active)
                     .ToListAsync();
 
                 int generatedCount = 0;
-
-                // 🚨 NEW: The "Pending List" for deferred marking
                 var readingsToMarkBilled = new HashSet<Guid>();
 
                 foreach (var contract in activeContracts)
@@ -40,7 +38,6 @@ namespace MyRoomService.Services
 
                         if (targetDate.Date >= expectedBillingDate.Date)
                         {
-                            // 🚨 Pass the HashSet down to the generator
                             var invoice = await GenerateInvoiceForContractAsync(tenantId, contract.Id, expectedBillingDate, autoPublish, readingsToMarkBilled);
 
                             if (invoice != null)
@@ -56,7 +53,6 @@ namespace MyRoomService.Services
                     }
                 }
 
-                // 🚨 NEW: The "Sweep" - Mark all collected readings as billed at the end of the batch
                 if (readingsToMarkBilled.Any())
                 {
                     var readings = await _context.MeterReadings
@@ -79,13 +75,12 @@ namespace MyRoomService.Services
             }
         }
 
-        // 🚨 Updated Signature to accept the HashSet
         public async Task<Invoice?> GenerateInvoiceForContractAsync(
-            Guid tenantId,
-            Guid contractId,
-            DateTime targetDate,
-            bool autoPublish = false,
-            HashSet<Guid>? processedReadings = null) // Optional parameter
+                    Guid tenantId,
+                    Guid contractId,
+                    DateTime targetDate,
+                    bool autoPublish = false,
+                    HashSet<Guid>? processedReadings = null)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -100,9 +95,16 @@ namespace MyRoomService.Services
 
                 if (contract == null || contract.Status != ContractStatus.Active) return null;
 
-                var exists = await _context.Invoices.AnyAsync(i => i.ContractId == contractId
-                    && i.InvoiceDate.Month == targetDate.Month && i.InvoiceDate.Year == targetDate.Year && i.Status != "VOID");
-                if (exists) return null;
+                // 🚨 FIX: Duplicate Check now only looks for bills that already have a "RENT" charge.
+                // This allows the system to generate a Monthly Bill even if a Move-In Bill exists.
+                var regularBillExists = await _context.Invoices.AnyAsync(i =>
+                    i.ContractId == contractId
+                    && i.InvoiceDate.Month == targetDate.Month
+                    && i.InvoiceDate.Year == targetDate.Year
+                    && i.Status != "VOID"
+                    && i.Items!.Any(item => item.ItemType == "RENT"));
+
+                if (regularBillExists) return null;
 
                 var invoice = new Invoice
                 {
@@ -172,13 +174,11 @@ namespace MyRoomService.Services
                             decimal consumption = (decimal)reading.Consumption;
                             decimal totalAmount = consumption * serviceDetail.MonthlyPrice;
 
-                            // 🚨 THE NEW LOGIC
-                            decimal finalAmount = totalAmount; // Default assumes they pay all of it
+                            decimal finalAmount = totalAmount;
                             string descriptionSuffix = "";
 
                             if (contract.Unit.MeteredBillingMode == MeteredBillingMode.SplitEqually)
                             {
-                                // Find how many people are currently active in this exact room
                                 var activeRoommatesCount = await _context.Contracts
                                     .CountAsync(c => c.UnitId == contract.UnitId && c.Status == ContractStatus.Active);
 
@@ -200,15 +200,12 @@ namespace MyRoomService.Services
                             });
                             runningTotal += finalAmount;
 
-                            // 🚨 DEFERRED MARKING
                             if (processedReadings != null)
                             {
-                                // Add to batch sweep list
                                 processedReadings.Add(reading.Id);
                             }
                             else
                             {
-                                // Fallback: If generated individually outside of batch, mark it now
                                 reading.IsBilled = true;
                             }
                         }
@@ -240,6 +237,43 @@ namespace MyRoomService.Services
                     }
                 }
 
+                // 🚨 --- SECTION E: ADVANCE RENT DEDUCTION LOGIC --- 🚨
+                // 1. Find total Advance Rent successfully PAID by this contract
+                var totalAdvancePaid = await _context.InvoiceItems
+                    .Where(i => i.Invoice!.ContractId == contract.Id
+                             && i.ItemType == "ADVANCE"
+                             && i.Invoice.Status == "PAID")
+                    .SumAsync(i => i.Amount);
+
+                // 2. Find total Advance Rent already APPLIED/CONSUMED in past months
+                var totalAdvanceApplied = await _context.InvoiceItems
+                    .Where(i => i.Invoice!.ContractId == contract.Id
+                             && i.ItemType == "ADVANCE_DEDUCTION")
+                    .SumAsync(i => Math.Abs(i.Amount));
+
+                var unusedAdvance = totalAdvancePaid - totalAdvanceApplied;
+
+                if (unusedAdvance > 0)
+                {
+                    // We only deduct up to the Base Rent amount (so utilities are still paid out of pocket)
+                    decimal deductionAmount = Math.Min(unusedAdvance, contract.RentAmount);
+
+                    if (deductionAmount > 0)
+                    {
+                        invoice.Items.Add(new InvoiceItem
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = tenantId,
+                            InvoiceId = invoice.Id,
+                            ItemType = "ADVANCE_DEDUCTION",
+                            Description = "Advance Rent Applied",
+                            Amount = -deductionAmount
+                        });
+                        runningTotal -= deductionAmount;
+                    }
+                }
+
+                // Finalize total
                 invoice.TotalAmount = runningTotal;
                 _context.Invoices.Add(invoice);
 

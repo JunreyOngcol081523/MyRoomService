@@ -111,14 +111,17 @@ namespace MyRoomService.Pages.Invoices
         public async Task<IActionResult> OnPostRecordPaymentAsync(Guid id)
         {
             var tenantId = _tenantService.GetTenantId();
+
+            // 1. 🚨 ADDED: Include(i => i.Occupant) so we can update their verification status
             var invoice = await _context.Invoices
+                .Include(i => i.Occupant)
                 .FirstOrDefaultAsync(i => i.Id == id && i.TenantId == tenantId);
 
             if (invoice == null) return NotFound();
 
             if (PaymentAmount <= 0)
             {
-                TempData["StatusMessage"] = "Error: Payment amount must be greater than zero.";
+                TempData["ErrorMessage"] = "Error: Payment amount must be greater than zero.";
                 return RedirectToPage(new { id = id });
             }
 
@@ -130,7 +133,18 @@ namespace MyRoomService.Pages.Invoices
             {
                 invoice.Status = "PAID";
                 invoice.AmountPaid = invoice.TotalAmount; // Cap it so we don't show negative balances
-                TempData["StatusMessage"] = "Success! Invoice is fully paid.";
+
+                // 2. 🚨 THE AUTOMATIC VERIFICATION GATE 🚨
+                // If it's fully paid, has an Occupant, but NO Contract... it's the Move-In Invoice!
+                if (invoice.ContractId == null && invoice.Occupant != null)
+                {
+                    invoice.Occupant.KycStatus = KycStatus.Verified;
+                    TempData["StatusMessage"] = "Success! Move-In Invoice fully paid. The Occupant is now Officially Verified!";
+                }
+                else
+                {
+                    TempData["StatusMessage"] = "Success! Invoice is fully paid.";
+                }
 
                 await _context.SaveChangesAsync();
 

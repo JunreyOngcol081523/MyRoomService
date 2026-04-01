@@ -33,7 +33,6 @@ namespace MyRoomService.Pages.Contracts
         [BindProperty]
         public List<ContractAddOnDto> SelectedAddOns { get; set; } = new();
 
-        // --- NEW: To catch the snapshot of included unit services from the frontend ---
         [BindProperty]
         public List<IncludedUnitServiceDto> IncludedUnitServices { get; set; } = new();
 
@@ -113,7 +112,6 @@ namespace MyRoomService.Pages.Contracts
             return new JsonResult(units);
         }
 
-        // --- NEW: AJAX endpoint to fetch baseline services for the selected unit ---
         public async Task<JsonResult> OnGetUnitServicesAsync(Guid unitId)
         {
             var tenantId = _tenantService.GetTenantId();
@@ -146,6 +144,12 @@ namespace MyRoomService.Pages.Contracts
 
             Contract.TenantId = tenantId;
 
+            // Explicitly generate the Contract ID so we can use it right now
+            if (Contract.Id == Guid.Empty)
+            {
+                Contract.Id = Guid.NewGuid();
+            }
+
             // 1. Process Global Add-ons
             if (SelectedAddOns != null && SelectedAddOns.Any())
             {
@@ -165,33 +169,33 @@ namespace MyRoomService.Pages.Contracts
             // 2. Process the "Snapshot" of Included Unit Services
             if (IncludedUnitServices != null && IncludedUnitServices.Any())
             {
-                // NOTE: You will need an entity on your Contract model to store these snapshots!
-                // For example: public ICollection<ContractIncludedService> IncludedServices { get; set; }
-
-                // Initialize the collection if it doesn't exist yet
-                // Contract.IncludedServices ??= new List<ContractIncludedService>();
-
                 foreach (var serviceDto in IncludedUnitServices)
                 {
-                    // Uncomment and adjust this once you add the snapshot table to your domain model
-                    /*
-                    Contract.IncludedServices.Add(new ContractIncludedService
-                    {
-                        TenantId = tenantId,
-                        Name = serviceDto.Name,
-                        Amount = serviceDto.MonthlyPrice
-                    });
-                    */
+                    // Uncomment when ready
                 }
             }
 
+            // 3. Fix DateTime Zones for PostgreSQL
             Contract.StartDate = DateTime.SpecifyKind(Contract.StartDate, DateTimeKind.Utc);
-
             if (Contract.EndDate.HasValue)
             {
                 Contract.EndDate = DateTime.SpecifyKind(Contract.EndDate.Value, DateTimeKind.Utc);
             }
 
+            // 🚨 4. THE MAGIC: LINK FLOATING INVOICES TO THIS CONTRACT
+            // Find any invoice for this occupant that doesn't have a room assigned yet
+            var floatingInvoices = await _context.Invoices
+                .Where(i => i.TenantId == tenantId
+                         && i.OccupantId == Contract.OccupantId
+                         && i.ContractId == null)
+                .ToListAsync();
+
+            foreach (var invoice in floatingInvoices)
+            {
+                invoice.ContractId = Contract.Id;
+            }
+
+            // 5. Save everything to the database
             _context.Contracts.Add(Contract);
             await _context.SaveChangesAsync();
 
@@ -233,7 +237,12 @@ namespace MyRoomService.Pages.Contracts
             public decimal AgreedAmount { get; set; }
         }
 
-
+        // Added this to fix potential compile errors from your BindProperty
+        public class IncludedUnitServiceDto
+        {
+            public string Name { get; set; } = string.Empty;
+            public decimal MonthlyPrice { get; set; }
+        }
 
         #endregion
     }

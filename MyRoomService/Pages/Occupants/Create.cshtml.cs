@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.UI.Services; // <-- Required for IEmailSender
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using MyRoomService.Domain.Entities;
@@ -12,13 +12,13 @@ namespace MyRoomService.Pages.Occupants
         private readonly MyRoomService.Infrastructure.Persistence.ApplicationDbContext _context;
         private readonly ITenantService _tenantService;
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly IEmailSender _emailSender; // <-- Added Email Sender
+        private readonly IEmailSender _emailSender;
 
         public CreateModel(
             MyRoomService.Infrastructure.Persistence.ApplicationDbContext context,
             ITenantService tenantService,
             UserManager<ApplicationUser> userManager,
-            IEmailSender emailSender) // <-- Injected here
+            IEmailSender emailSender)
         {
             _context = context;
             _tenantService = tenantService;
@@ -28,6 +28,16 @@ namespace MyRoomService.Pages.Occupants
 
         [BindProperty]
         public Occupant Occupant { get; set; } = default!;
+
+        // 🚨 ADDED [BindProperty] so the HTML form can send data to these variables
+        [BindProperty]
+        public bool GenerateInitialInvoice { get; set; } = true;
+
+        [BindProperty]
+        public decimal AdvanceAmount { get; set; }
+
+        [BindProperty]
+        public decimal DepositAmount { get; set; }
 
         public IActionResult OnGet()
         {
@@ -49,6 +59,8 @@ namespace MyRoomService.Pages.Occupants
 
             try
             {
+                var tenantId = _tenantService.GetTenantId();
+
                 // 1. Generate the plain-text password
                 string tempPassword = GenerateRandomPassword();
 
@@ -58,7 +70,7 @@ namespace MyRoomService.Pages.Occupants
                     UserName = Occupant.Email,
                     Email = Occupant.Email,
                     EmailConfirmed = true,
-                    TenantId = _tenantService.GetTenantId()
+                    TenantId = tenantId
                 };
 
                 // Identity automatically hashes tempPassword during this call
@@ -69,11 +81,58 @@ namespace MyRoomService.Pages.Occupants
                     // 3. Assign Role & Link Domain Entity
                     await _userManager.AddToRoleAsync(newUser, "Occupant");
 
-                    Occupant.TenantId = _tenantService.GetTenantId();
+                    Occupant.TenantId = tenantId;
                     Occupant.Id = Guid.NewGuid();
                     Occupant.IdentityUserId = newUser.Id;
 
                     _context.Occupants.Add(Occupant);
+
+                    // 🚨 NEW: The Floating Invoice Generator
+                    if (GenerateInitialInvoice && (AdvanceAmount > 0 || DepositAmount > 0))
+                    {
+                        var moveInInvoice = new Invoice
+                        {
+                            Id = Guid.NewGuid(),
+                            TenantId = tenantId,
+                            OccupantId = Occupant.Id,
+                            ContractId = null, // <-- THIS IS THE MAGIC. It floats!
+                            InvoiceDate = DateTime.UtcNow,
+                            DueDate = DateTime.UtcNow.AddDays(3),
+                            Status = "UNPAID",
+                            IsPublished = true, // Live immediately so they can pay it
+                            TotalAmount = AdvanceAmount + DepositAmount,
+                            Items = new List<InvoiceItem>()
+                        };
+
+                        if (AdvanceAmount > 0)
+                        {
+                            moveInInvoice.Items.Add(new InvoiceItem
+                            {
+                                Id = Guid.NewGuid(),
+                                TenantId = tenantId,
+                                InvoiceId = moveInInvoice.Id,
+                                ItemType = "ADVANCE",
+                                Description = "Advance Rent Payment",
+                                Amount = AdvanceAmount
+                            });
+                        }
+
+                        if (DepositAmount > 0)
+                        {
+                            moveInInvoice.Items.Add(new InvoiceItem
+                            {
+                                Id = Guid.NewGuid(),
+                                TenantId = tenantId,
+                                InvoiceId = moveInInvoice.Id,
+                                ItemType = "DEPOSIT",
+                                Description = "Security Deposit",
+                                Amount = DepositAmount
+                            });
+                        }
+
+                        _context.Invoices.Add(moveInInvoice);
+                    }
+
                     await _context.SaveChangesAsync();
 
                     // 4. COMMIT TO DATABASE FIRST
@@ -106,7 +165,6 @@ namespace MyRoomService.Pages.Occupants
                         </div>"
                     );
 
-                    // Optional: Still pass it to the UI just in case the landlord wants to copy it manually or the email bounces.
                     TempData["SuccessMessage"] = $"Occupant created! Welcome email sent. (Temp Password: {tempPassword})";
                     return RedirectToPage("./Index");
                 }

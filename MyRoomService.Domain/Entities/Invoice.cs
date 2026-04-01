@@ -12,7 +12,7 @@ namespace MyRoomService.Domain.Entities
         public Occupant? Occupant { get; set; }
 
         // This MUST match the column in your ERD
-        public Guid ContractId { get; set; }
+        public Guid? ContractId { get; set; }
         public Contract? Contract { get; set; }
 
         public DateTime InvoiceDate { get; set; }
